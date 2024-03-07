@@ -153,11 +153,7 @@ function toggleFullScreen(elem) {
     const play = async ({ time, oldT }) => {
         const newT = new Date().getTime();
         const dt = (new Date().getTime() - oldT) * 1e-3;
-        camera.sceneShot(
-            scene,
-            { samples: 5, bounces: 3 }
-        )
-            .to(exposedCanvas);
+        camera.sceneShot(scene).to(exposedCanvas);
         // exposedCanvas.map((x,y) => Color.ofRGB((x / w) * time % 1, (y / h) * time % 1, 1))
         setTimeout(() => play({
             oldT: newT,

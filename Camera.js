@@ -2,7 +2,12 @@ import Color from "./Color.js";
 import Ray from "./Ray.js";
 import Vec, { Vec3 } from "./Vector.js";
 
-const PARAMS = { samplesPerPxl: 1, samples: 3, bounces: 3 };
+const PARAMS = {
+  samplesPerPxl: 3,
+  samples: 3,
+  bounces: 3,
+  variance: 0.01
+};
 export default class Camera {
   constructor(props = {
     sphericalCoords: Vec3(5, 0, 0),
@@ -76,8 +81,17 @@ export default class Camera {
   sceneShot(scene, params = PARAMS) {
     const bounces = params.bounces;
     const samples = params.samples;
+    const samplesPerPxl = params.samplesPerPxl;
+    const variance = params.variance;
     const lambda = ray => {
-      return trace(ray, scene, { bounces, samples });
+      let c = Color.BLACK;
+      for (let i = 0; i < samplesPerPxl; i++) {
+        const epsilon = Vec.RANDOM(3).scale(variance);
+        const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
+        const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
+        c = c.add(trace(r, scene, { bounces, samples }));
+      }
+      return c.scale(1 / samplesPerPxl);
     }
     return this.rayShot(lambda, params);
   }
@@ -94,8 +108,7 @@ export default class Camera {
 }
 
 function trace(ray, scene, options) {
-  const { samples, bounces } = options
-  if (bounces === 0) return Color.BLACK;
+  const { samples, bounces } = options;
   const interception = scene.interceptWith(ray)
   if (!interception) return Color.BLACK;
   const [p, e] = interception;
@@ -104,14 +117,24 @@ function trace(ray, scene, options) {
   let c = Color.BLACK;
   let r = sampleRayFrom(p, e);
   for (let i = 0; i < samples; i++) {
-    const finalC = trace(
+    const finalC = pathToLight(
       r,
       scene,
       { bounces: bounces - 1, samples }
     );
-    c = c.add(color.mul(finalC));
+    c = c.add(finalC);
   }
   return c.scale(1 / samples);
+}
+
+function pathToLight(ray, scene, { bounces }) {
+  if (bounces === 0) return Color.BLACK;
+  const interception = scene.interceptWith(ray)
+  if (!interception) return Color.BLACK;
+  const [p, e] = interception;
+  const color = e.color ?? e.colors[0];
+  if (e.emissive) return color;
+  return pathToLight(sampleRayFrom(p, e), scene, { bounces: bounces - 1 });
 }
 
 function sampleRayFrom(point, element) {
