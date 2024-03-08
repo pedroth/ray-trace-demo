@@ -3,9 +3,9 @@ import Ray from "./Ray.js";
 import Vec, { Vec3 } from "./Vector.js";
 
 const PARAMS = {
-  samplesPerPxl: 3,
-  samples: 3,
-  bounces: 3,
+  samplesPerPxl: 1,
+  samples: 1,
+  bounces: 10,
   variance: 0.01
 };
 export default class Camera {
@@ -109,22 +109,22 @@ export default class Camera {
 
 function trace(ray, scene, options) {
   const { samples, bounces } = options;
+
+  if (bounces === 0) return Color.BLACK;
+
   const interception = scene.interceptWith(ray)
   if (!interception) return Color.BLACK;
+
   const [p, e] = interception;
   const color = e.color ?? e.colors[0];
   if (e.emissive) return color;
-  let c = Color.BLACK;
   let r = sampleRayFrom(p, e);
-  for (let i = 0; i < samples; i++) {
-    const finalC = pathToLight(
-      r,
-      scene,
-      { bounces: bounces - 1, samples }
-    );
-    c = c.add(finalC);
-  }
-  return c.scale(1 / samples);
+  const finalC = trace(
+    r,
+    scene,
+    { bounces: bounces - 1, samples }
+  );
+  return color.mul(finalC);
 }
 
 function pathToLight(ray, scene, { bounces }) {
