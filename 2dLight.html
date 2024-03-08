@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D Light</title>
+    <style>
+        body {
+            display: flex;
+            background-color: rgb(26, 26, 26);
+        }
+
+        canvas {
+            margin: auto;
+        }
+    </style>
+</head>
+
+<body>
+
+</body>
+<script type="module">
+    import Canvas from "./Canvas.js";
+    import Color from "./Color.js";
+    import { Vec2 } from "./Vector.js";
+
+    const exposureTime = 1000;
+    const w = 640 / 2;
+    const h = 480 / 2;
+    const canvas = Canvas.ofSize(w, h);
+    let exposedCanvas = canvas.exposure();
+
+
+    // mouse handling
+    let mousedown = false;
+    let mouse = Vec2();
+    let scale = 5;
+    let center = Vec2();
+    canvas.onMouseDown((x, y) => {
+        mousedown = true;
+        mouse = Vec2(x, y);
+    })
+    canvas.onMouseUp(() => {
+        mousedown = false;
+        mouse = Vec2();
+    })
+    canvas.onMouseMove((x, y) => {
+        const newMouse = Vec2(x, y);
+        if (!mousedown || newMouse.equals(mouse)) {
+            return;
+        }
+        const [dx, dy] = newMouse.sub(mouse).toArray();
+        center = center.add(Vec2(dx, dy));
+        mouse = newMouse;
+        exposedCanvas = canvas.exposure(exposureTime);
+    })
+    canvas.onMouseWheel(({ deltaY }) => {
+        scale = scale + deltaY * 0.001;
+        exposedCanvas = canvas.exposure(exposureTime);
+    })
+
+
+    // scene
+    function Line({ name, positions, color, radius, emissive }) {
+        const v = positions[1].sub(positions[0]);
+        const n = Vec2(-v.y, v.x).normalize();
+        const line = { name, positions, color, radius, emissive };
+        line.distanceTo = (p) => {
+            const x = p.sub(positions[0]);
+            const h = Math.min(1, Math.max(0, x.dot(v) / v.dot(v)));
+            return x.sub(v.scale(h)).length() - radius;
+        }
+
+        function normal(p) {
+            const x = p.sub(positions[0]);
+            const dot = x.dot(v);
+            if (dot > 0 && dot < 1) return n.scale(Math.sign(x.dot(n)));
+            const end = p.sub(positions[1]);
+            if (x.length() < end.length()) {
+                return x.normalize();
+            } else {
+                return end.normalize();
+            }
+        }
+
+        line.interceptWith = (init, dir) => {
+            const maxIte = 10;
+            const epsilon = 1e-3;
+            let p = init;
+            let t = line.distanceTo(p);
+            let minT = t;
+            for (let i = 0; i < maxIte; i++) {
+                p = init.add(dir.scale(t));
+                const d = line.distanceTo(p);
+                t += d;
+                if (d < epsilon) {
+                    return [p, normal(p)];
+                }
+                if (d > 2 * minT) {
+                    return;
+                }
+                minT = d;
+            }
+            return;
+        }
+        return line;
+    }
+
+    function Point({ name, position, color, radius, emissive }) {
+        const point = { name, position, color, radius, emissive };
+        point.distanceTo = (p) => {
+            return p.sub(position).length() - radius;
+        }
+        point.interceptWith = (init, dir) => {
+            const maxIte = 10;
+            const epsilon = 1e-3;
+            let p = init;
+            let t = point.distanceTo(p);
+            let minT = t;
+            for (let i = 0; i < maxIte; i++) {
+                p = init.add(dir.scale(t));
+                const d = point.distanceTo(p);
+                t += d;
+                if (d < epsilon) {
+                    return [p, p.sub(position).normalize()];
+                }
+                if (d > 2 * minT) {
+                    return;
+                }
+                minT = d;
+            }
+            return;
+        }
+        return point;
+    }
+
+    const scene = [
+        Point({ name: "light", position: Vec2(), radius: 0.1, emissive: true, color: Color.WHITE }),
+        Line({ name: "left", positions: [Vec2(-1.5, -1.5), Vec2(-1.5, 1.5)], radius: 0.1, color: Color.RED }),
+        Line({ name: "right", positions: [Vec2(1.5, 1.5), Vec2(1.5, -1.5)], radius: 0.1, color: Color.GREEN }),
+        Line({ name: "top", positions: [Vec2(-1.5, 1.5), Vec2(1.5, 1.5)], radius: 0.1, color: Color.WHITE }),
+    ]
+
+    function intersectScene(init, dir) {
+        let closest = undefined;
+        let minDist = Number.MAX_VALUE;
+        for (let i = 0; i < scene.length; i++) {
+            const e = scene[i];
+            const hit = e.interceptWith(init, dir);
+            if (hit) {
+                const [p, n] = hit;
+                const length = p.sub(init).length();
+                if (length < minDist) {
+                    minDist = length;
+                    closest = [p, n, e];
+                }
+            }
+        }
+        return closest;
+    }
+
+    function trace(x, normal, bounces) {
+        if (bounces === 0) return Color.BLACK;
+        const theta = 2 * Math.PI * Math.random();
+        let v = Vec2(Math.cos(theta), Math.sin(theta));
+        if (normal && v.dot(normal) < 0) {
+            v = v.scale(-1);
+        }
+
+        const hit = intersectScene(x, v);
+        if (!hit) return Color.BLACK;
+
+        const [p, n, e] = hit;
+        const color = e.color;
+        if (e.emissive) return color;
+        const finalC = trace(p, n, bounces - 1);
+        return finalC.mul(color).add(finalC.scale(1 / bounces));
+
+    }
+
+    // play
+    const play = async ({ time, oldT }) => {
+        const newT = new Date().getTime();
+        const dt = (new Date().getTime() - oldT) * 1e-3;
+        exposedCanvas
+            .map((x, y) => {
+                const px = scale * (2 * ((x - center.x) / w) - 1);
+                const py = scale * (2 * ((y - center.y) / h) - 1);
+                return trace(Vec2(px, py), undefined, 10);
+            })
+        setTimeout(() => play({
+            oldT: newT,
+            time: time + dt,
+        }));
+    }
+    setTimeout(() => play({ oldT: new Date().getTime(), time: 0 }))
+
+
+
+    // DOM
+    function toggleFullScreen(elem) {
+        if (!document.fullscreenElement &&    // alternative standard method
+            !document.mozFullScreenElement &&
+            !document.webkitFullscreenElement &&
+            !document.msFullscreenElement) {  // current working methods
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen();
+            } else if (elem.msRequestFullscreen) {
+                elem.msRequestFullscreen();
+            } else if (elem.mozRequestFullScreen) {
+                elem.mozRequestFullScreen();
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
+            }
+        }
+    }
+    const canvasDom = canvas.DOM;
+    canvasDom.addEventListener("click", () => {
+        toggleFullScreen(canvasDom);
+    })
+    document.body.appendChild(canvas.DOM);
+</script>
+
+</html>

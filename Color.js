@@ -37,11 +37,10 @@ export default class Color {
   }
 
   mul(color) {
-    const clampColor = clamp(0, 1);
     return Color.ofRGB(
-      clampColor(this.rgb[0] * color.red),
-      clampColor(this.rgb[1] * color.green),
-      clampColor(this.rgb[2] * color.blue)
+      this.rgb[0] * color.red,
+      this.rgb[1] * color.green,
+      this.rgb[2] * color.blu
     )
   }
 
