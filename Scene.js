@@ -33,12 +33,12 @@ export default class Scene {
   }
 
   interceptWith(ray) {
-    const points = this.sceneElements;
+    const elements = this.sceneElements;
     let closestDistance = Number.MAX_VALUE;
     let closest = undefined;
     if (!this.boundingBox.interceptWith(ray)) return;
-    for (let i = 0; i < points.length; i++) {
-      const interception = points[i].interceptWith(ray)
+    for (let i = 0; i < elements.length; i++) {
+      const interception = elements[i].interceptWith(ray)
       if (!interception) continue;
       const [pos, _] = interception;
       const distance = ray
