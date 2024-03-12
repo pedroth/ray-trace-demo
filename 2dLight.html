@@ -25,7 +25,6 @@
     import Color from "./Color.js";
     import { Vec2 } from "./Vector.js";
 
-    const exposureTime = 1000;
     const w = 640 / 2;
     const h = 480 / 2;
     const canvas = Canvas.ofSize(w, h);
@@ -35,11 +34,13 @@
     // mouse handling
     let mousedown = false;
     let mouse = Vec2();
+    let pointer = mouse;
     let scale = 5;
     let center = Vec2();
     canvas.onMouseDown((x, y) => {
         mousedown = true;
         mouse = Vec2(x, y);
+
     })
     canvas.onMouseUp(() => {
         mousedown = false;
@@ -47,19 +48,41 @@
     })
     canvas.onMouseMove((x, y) => {
         const newMouse = Vec2(x, y);
+        pointer = newMouse;
         if (!mousedown || newMouse.equals(mouse)) {
             return;
         }
         const [dx, dy] = newMouse.sub(mouse).toArray();
         center = center.add(Vec2(dx, dy));
         mouse = newMouse;
-        exposedCanvas = canvas.exposure(exposureTime);
+        exposedCanvas = canvas.exposure();
     })
     canvas.onMouseWheel(({ deltaY }) => {
         scale = scale + deltaY * 0.001;
-        exposedCanvas = canvas.exposure(exposureTime);
+        exposedCanvas = canvas.exposure();
     })
 
+
+    function sdfIntercept(init, dir, element) {
+        const maxIte = 100;
+        const epsilon = 1e-6;
+        let p = init;
+        let t = element.distanceTo(p);
+        let minT = t;
+        for (let i = 0; i < maxIte; i++) {
+            p = init.add(dir.scale(t));
+            const d = element.distanceTo(p);
+            t += d;
+            if (d < epsilon) {
+                return p;
+            }
+            if (d > 2 * minT) {
+                return;
+            }
+            minT = d;
+        }
+        return;
+    }
 
     // scene
     function Line({ name, positions, color, radius, emissive }) {
@@ -85,24 +108,8 @@
         }
 
         line.interceptWith = (init, dir) => {
-            const maxIte = 10;
-            const epsilon = 1e-3;
-            let p = init;
-            let t = line.distanceTo(p);
-            let minT = t;
-            for (let i = 0; i < maxIte; i++) {
-                p = init.add(dir.scale(t));
-                const d = line.distanceTo(p);
-                t += d;
-                if (d < epsilon) {
-                    return [p, normal(p)];
-                }
-                if (d > 2 * minT) {
-                    return;
-                }
-                minT = d;
-            }
-            return;
+            const p = sdfIntercept(init, dir, line);
+            if (p) return [p, normal(p)];
         }
         return line;
     }
@@ -113,24 +120,8 @@
             return p.sub(position).length() - radius;
         }
         point.interceptWith = (init, dir) => {
-            const maxIte = 10;
-            const epsilon = 1e-3;
-            let p = init;
-            let t = point.distanceTo(p);
-            let minT = t;
-            for (let i = 0; i < maxIte; i++) {
-                p = init.add(dir.scale(t));
-                const d = point.distanceTo(p);
-                t += d;
-                if (d < epsilon) {
-                    return [p, p.sub(position).normalize()];
-                }
-                if (d > 2 * minT) {
-                    return;
-                }
-                minT = d;
-            }
-            return;
+            const p = sdfIntercept(init, dir, point);
+            if (p) return [p, p.sub(position).normalize()];
         }
         return point;
     }
@@ -138,7 +129,7 @@
     const scene = [
         Point({ name: "light", position: Vec2(), radius: 0.1, emissive: true, color: Color.WHITE }),
         Line({ name: "left", positions: [Vec2(-1.5, -1.5), Vec2(-1.5, 1.5)], radius: 0.1, color: Color.RED }),
-        Line({ name: "right", positions: [Vec2(1.5, 1.5), Vec2(1.5, -1.5)], radius: 0.1, color: Color.GREEN }),
+        Line({ name: "right", positions: [Vec2(1.5, 1.5), Vec2(1.5, -1.5)], radius: 0.1, color: Color.BLUE }),
         Line({ name: "top", positions: [Vec2(-1.5, 1.5), Vec2(1.5, 1.5)], radius: 0.1, color: Color.WHITE }),
     ]
 
@@ -161,6 +152,10 @@
     }
 
     function trace(x, normal, bounces) {
+        // const hit = pathToLight(x, normal, bounces);
+        // if(!hit) return Color.BLACK;
+        // const [p, n, e] = hit;
+        // return e.color;
         if (bounces === 0) return Color.BLACK;
         const theta = 2 * Math.PI * Math.random();
         let v = Vec2(Math.cos(theta), Math.sin(theta));
@@ -175,8 +170,48 @@
         const color = e.color;
         if (e.emissive) return color;
         const finalC = trace(p, n, bounces - 1);
-        return finalC.mul(color).add(finalC.scale(1 / bounces));
+        return finalC.mul(color);
+    }
 
+    function pathToLight(x, normal, bounces) {
+        if (bounces === 0) return;
+        const theta = 2 * Math.PI * Math.random();
+        let v = Vec2(Math.cos(theta), Math.sin(theta));
+        if (normal && v.dot(normal) < 0) {
+            v = v.scale(-1);
+        }
+        const hit = intersectScene(x, v);
+        if (!hit) return;
+        const [p, n, e] = hit;
+        const color = e.color;
+        if (e.emissive) return hit;
+        return pathToLight(p, n, bounces - 1);
+    }
+
+
+    function debugTrace(x, normal, bounces) {
+        if (bounces === 0) return
+        const theta = 2 * Math.PI * Math.random();
+        let v = Vec2(Math.cos(theta), Math.sin(theta));
+        if (normal && v.dot(normal) < 0) {
+            v = v.scale(-1);
+        }
+
+        const hit = intersectScene(x, v);
+        if (!hit) return Color.BLACK;
+
+
+        const [p, n, e] = hit;
+        const color = e.color;
+
+        canvas.drawLine(
+            Vec2(((x.x / scale) + 1) * (w / 2) + center.x, ((x.y / scale) + 1) * (h / 2) + center.y),
+            Vec2(((p.x / scale) + 1) * (w / 2) + center.x, ((p.y / scale) + 1) * (h / 2) + center.y),
+            () => color
+        )
+
+        if (e.emissive) return;
+        debugTrace(p, n, bounces - 1);
     }
 
     // play
@@ -185,10 +220,19 @@
         const dt = (new Date().getTime() - oldT) * 1e-3;
         exposedCanvas
             .map((x, y) => {
-                const px = scale * (2 * ((x - center.x) / w) - 1);
-                const py = scale * (2 * ((y - center.y) / h) - 1);
+                const px = scale * (2 * (x - center.x) / w - 1);
+                const py = scale * (2 * (y - center.y) / h - 1);
                 return trace(Vec2(px, py), undefined, 10);
             })
+        // debugTrace(
+        //     Vec2(
+        //         scale * (2 * ((pointer.x - center.x) / w) - 1),
+        //         scale * (2 * ((pointer.y - center.y) / h) - 1),
+        //     ),
+        //     undefined,
+        //     10
+        // )
+        // if(Math.random() < 0.01) canvas.fill(() => Color.BLACK);
         setTimeout(() => play({
             oldT: newT,
             time: time + dt,
