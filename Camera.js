@@ -81,17 +81,12 @@ export default class Camera {
   sceneShot(scene, params = PARAMS) {
     const bounces = params.bounces;
     const samples = params.samples;
-    const samplesPerPxl = params.samplesPerPxl;
     const variance = params.variance;
     const lambda = ray => {
-      let c = Color.BLACK;
-      for (let i = 0; i < samplesPerPxl; i++) {
-        const epsilon = Vec.RANDOM(3).scale(variance);
-        const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
-        const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
-        c = c.add(trace(r, scene, { bounces, samples }));
-      }
-      return c.scale(1 / samplesPerPxl);
+      const epsilon = Vec.RANDOM(3).scale(variance);
+      const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
+      const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
+      return trace(r, scene, { bounces, samples });
     }
     return this.rayShot(lambda, params);
   }
@@ -109,16 +104,13 @@ export default class Camera {
 
 function trace(ray, scene, options) {
   const { samples, bounces } = options;
-
   if (bounces === 0) return Color.BLACK;
-
   const interception = scene.interceptWith(ray)
   if (!interception) return Color.BLACK;
-
   const [p, e] = interception;
   const color = e.color ?? e.colors[0];
   if (e.emissive) return color;
-  let r = sampleRayFrom(p, e);
+  let r = scatterRay(p, e, ray);
   const finalC = trace(
     r,
     scene,
@@ -127,20 +119,16 @@ function trace(ray, scene, options) {
   return color.mul(finalC);
 }
 
-function pathToLight(ray, scene, { bounces }) {
-  if (bounces === 0) return Color.BLACK;
-  const interception = scene.interceptWith(ray)
-  if (!interception) return Color.BLACK;
-  const [p, e] = interception;
-  const color = e.color ?? e.colors[0];
-  if (e.emissive) return color;
-  return pathToLight(sampleRayFrom(p, e), scene, { bounces: bounces - 1 });
-}
-
-function sampleRayFrom(point, element) {
-  const normal = element.normalToPoint(point);
-  const random = Vec.RANDOM(3).map(x => 2 * x - 1);
-  const dot = random.dot(normal);
-  if (dot >= 0) return Ray(point, random.normalize());
-  return Ray(point, random.sub(normal.scale(2 * dot)));
+function scatterRay(point, element, ray) {
+  let normal = element.normalToPoint(point);
+  normal = ray.dir.dot(normal) < 0 ? normal : normal.scale(-1);
+  let randomInSphere = undefined;
+  while (true) {
+    const random = Vec.RANDOM(3).map(x => 2 * x - 1);
+    if (random.squareLength() >= 1) continue;
+    randomInSphere = random;
+    break;
+  }
+  if (randomInSphere.dot(normal) >= 0) return Ray(point, randomInSphere.normalize());
+  return Ray(point, randomInSphere.scale(-1).normalize());
 }

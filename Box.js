@@ -33,7 +33,7 @@ export default class Box {
 
     interceptWith(ray) {
         const maxIte = 100;
-        const epsilon = 1e-3;
+        const epsilon = 1e-6;
         let p = ray.init;
         let t = this.distanceToPoint(p);
         let minT = t;
@@ -44,7 +44,7 @@ export default class Box {
             if (d < epsilon) {
                 return p;
             }
-            if (d > minT) {
+            if (d > 2 * minT) {
                 break;
             }
             minT = d;

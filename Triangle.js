@@ -41,8 +41,8 @@ export default class Triangle {
         for (let i = 0; i < this.positions.length; i++) {
             const xi = this.positions[i];
             const u = x.sub(xi);
-            const ni = this.edges[i].cross(u).normalize();
-            const dot = ni.dot(n);
+            const ni = n.cross(this.edges[i]).normalize();
+            const dot = ni.dot(u);
             if (dot < 0) return;
         }
         return [x, this];

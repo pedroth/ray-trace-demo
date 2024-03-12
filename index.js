@@ -1,9 +1,9 @@
 import Camera from "./Camera.js";
 import Canvas from "./Canvas.js";
 import Color from "./Color.js";
-import Point from "./Point.js";
 import Scene from "./Scene.js";
 import Triangle from "./Triangle.js";
+import Point from "./Point.js";
 import { Vec2, Vec3 } from "./Vector.js";
 
 function toggleFullScreen(elem) {
@@ -24,11 +24,10 @@ function toggleFullScreen(elem) {
 }
 
 (() => {
-    const exposureTime = 1000;
     const w = 640 / 2;
     const h = 480 / 2;
     const canvas = Canvas.ofSize(w, h);
-    let exposedCanvas = canvas.exposure(exposureTime);
+    let exposedCanvas = canvas.exposure();
     const camera = new Camera({
         sphericalCoords: Vec3(7, 0, 0),
         focalPoint: Vec3(1.5, 1.5, 1.5)
@@ -59,12 +58,12 @@ function toggleFullScreen(elem) {
         );
         mouse = newMouse;
         camera.orbit();
-        exposedCanvas = canvas.exposure(exposureTime);
+        exposedCanvas = canvas.exposure();
     })
     canvas.onMouseWheel(({ deltaY }) => {
         camera.sphericalCoords = camera.sphericalCoords.add(Vec3(deltaY * 0.001, 0, 0));
         camera.orbit();
-        exposedCanvas = canvas.exposure(exposureTime);
+        exposedCanvas = canvas.exposure();
     })
     // scene
     const scene = new Scene();
@@ -144,7 +143,8 @@ function toggleFullScreen(elem) {
             .builder()
             .radius(0.5)
             .name("sphere")
-            .color(Color.GRAY)
+            .color(Color.WHITE)
+            // .emissive(true)
             .position(Vec3(1.5, 1.5, 1.5))
             .build(),
     )
@@ -154,7 +154,6 @@ function toggleFullScreen(elem) {
         const newT = new Date().getTime();
         const dt = (new Date().getTime() - oldT) * 1e-3;
         camera.sceneShot(scene).to(exposedCanvas);
-        // exposedCanvas.map((x,y) => Color.ofRGB((x / w) * time % 1, (y / h) * time % 1, 1))
         setTimeout(() => play({
             oldT: newT,
             time: time + dt,
