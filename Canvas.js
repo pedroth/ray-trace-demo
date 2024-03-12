@@ -73,9 +73,10 @@ export default class Canvas {
           this._image[k + 2] = this._image[k + 2] + (color.blue * MAX_8BIT - this._image[k + 2]) / it;
           this._image[k + 3] = MAX_8BIT;
         }
-        it++;
+        if(it < 100) it++
         return this.paint();
-      }
+      },
+      drawLine: () => {}
     }
   }
 
@@ -104,6 +105,31 @@ export default class Canvas {
 
   onMouseWheel(lambda) {
     this._canvas.addEventListener("wheel", lambda, false)
+  }
+
+  drawLine(p1, p2, shader) {
+    const w = this._width;
+    const h = this._height;
+    const line = [p1, p2];
+    if (line.length <= 1) return;
+    const [pi, pf] = line;
+    const v = pf.sub(pi);
+    const n = v.map(Math.abs).fold((e, x) => e + x);
+    for (let k = 0; k < n; k++) {
+      const s = k / n;
+      const lineP = pi.add(v.scale(s)).map(Math.floor);
+      const [x, y] = lineP.toArray();
+      const j = x;
+      const i = h - 1 - y;
+      const index = 4 * (i * w + j);
+      const color = shader(x, y);
+      if (!color) continue;
+      this._image[index] = color.red * MAX_8BIT;
+      this._image[index + 1] = color.green * MAX_8BIT;
+      this._image[index + 2] = color.blue * MAX_8BIT;
+      this._image[index + 3] = 255;
+    }
+    return this;
   }
 
   resize(width, height) {
