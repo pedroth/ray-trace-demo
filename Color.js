@@ -40,7 +40,7 @@ export default class Color {
     return Color.ofRGB(
       this.rgb[0] * color.red,
       this.rgb[1] * color.green,
-      this.rgb[2] * color.blu
+      this.rgb[2] * color.blue
     )
   }
 
@@ -62,9 +62,9 @@ export default class Color {
   }
 
   toGamma() {
-    const r = this.rgb[0] > 0 ? this.rgb[0] ** 0.01 : this.rgb[0];
-    const g = this.rgb[1] > 0 ? this.rgb[1] ** 0.01 : this.rgb[1];
-    const b = this.rgb[2] > 0 ? this.rgb[2] ** 0.01 : this.rgb[2];
+    const r = this.rgb[0] > 0 ? this.rgb[0] ** 0.00001 : this.rgb[0];
+    const g = this.rgb[1] > 0 ? this.rgb[1] ** 0.00001 : this.rgb[1];
+    const b = this.rgb[2] > 0 ? this.rgb[2] ** 0.00001 : this.rgb[2];
     return Color.ofRGB(r, g, b);
   }
 

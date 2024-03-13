@@ -1,4 +1,3 @@
-import Color from "./Color.js";
 import { MAX_8BIT } from "./Constants.js";
 
 export default class Canvas {

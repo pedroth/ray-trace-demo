@@ -5,7 +5,7 @@ import Vec, { Vec2, Vec3 } from "./Vector.js";
 const PARAMS = {
   samplesPerPxl: 1,
   samples: 1,
-  bounces: 10,
+  bounces: 1,
   variance: 0.01
 };
 export default class Camera {
@@ -82,11 +82,16 @@ export default class Camera {
     const bounces = params.bounces;
     const samples = params.samples;
     const variance = params.variance;
+    const samplesPerPxl = params.samplesPerPxl;
     const lambda = ray => {
-      const epsilon = Vec.RANDOM(3).scale(variance);
-      const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
-      const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
-      return trace(r, scene, { bounces, samples });
+      let c = Color.BLACK;
+      for (let i = 0; i < samplesPerPxl; i++) {
+        const epsilon = Vec.RANDOM(3).scale(variance);
+        const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
+        const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
+        c = c.add(trace(r, scene, { bounces, samples }));
+      }
+      return c.scale(1 / samplesPerPxl);
     }
     return this.rayShot(lambda, params);
   }
