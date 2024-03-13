@@ -5,8 +5,8 @@ import Vec, { Vec2, Vec3 } from "./Vector.js";
 const PARAMS = {
   samplesPerPxl: 1,
   samples: 1,
-  bounces: 1,
-  variance: 0.01
+  bounces: 10,
+  variance: 0.001
 };
 export default class Camera {
   constructor(props = {
@@ -91,7 +91,8 @@ export default class Camera {
         const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
         c = c.add(trace(r, scene, { bounces, samples }));
       }
-      return c.scale(1 / samplesPerPxl);
+      return c.scale(1 / samplesPerPxl).toGamma(0.1);
+      // return c.scale(1 / samplesPerPxl);
     }
     return this.rayShot(lambda, params);
   }

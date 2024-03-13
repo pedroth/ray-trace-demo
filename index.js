@@ -184,9 +184,9 @@ function toggleFullScreen(elem) {
             camera.rasterLine({ canvas, elem: { color: elem.color || elem.colors[0], positions: [p, hitP] } });
             return;
         }
-        camera.rasterLine({ canvas, elem: { color: Color.ofRGB(0, 1, 1), positions: [p, hitP] } });
+        camera.rasterLine({ canvas, elem: { color: elem.color || elem.colors[0], positions: [p, hitP] } });
         let normal = elem.normalToPoint(hitP);
-        // normal = v.dot(normal) <= 0 ? normal : normal.scale(-1);
+        normal = v.dot(normal) <= 0 ? normal : normal.scale(-1);
         debugTrace(hitP, normal, bounces - 1);
     }
 
@@ -196,7 +196,7 @@ function toggleFullScreen(elem) {
         const dt = (new Date().getTime() - oldT) * 1e-3;
         camera.sceneShot(scene).to(exposedCanvas);
 
-        // debugTrace(Vec3(0.5, 0.5, 0.5), undefined, 10);
+        // debugTrace(Vec3(1.5, 0.5, 5.5), undefined, 10);
         setTimeout(() => play({
             oldT: newT,
             time: time + dt,

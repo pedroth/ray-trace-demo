@@ -61,10 +61,10 @@ export default class Color {
     return `red: ${this.red}, green: ${this.green}, blue: ${this.blue}`;
   }
 
-  toGamma() {
-    const r = this.rgb[0] > 0 ? this.rgb[0] ** 0.00001 : this.rgb[0];
-    const g = this.rgb[1] > 0 ? this.rgb[1] ** 0.00001 : this.rgb[1];
-    const b = this.rgb[2] > 0 ? this.rgb[2] ** 0.00001 : this.rgb[2];
+  toGamma(alpha=0.5) {
+    const r = this.rgb[0] > 0 ? this.rgb[0] ** alpha : this.rgb[0];
+    const g = this.rgb[1] > 0 ? this.rgb[1] ** alpha : this.rgb[1];
+    const b = this.rgb[2] > 0 ? this.rgb[2] ** alpha : this.rgb[2];
     return Color.ofRGB(r, g, b);
   }
 
