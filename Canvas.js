@@ -1,3 +1,4 @@
+import Color from "./Color.js";
 import { MAX_8BIT } from "./Constants.js";
 
 export default class Canvas {
@@ -43,7 +44,7 @@ export default class Canvas {
       const x = j;
       const y = h - 1 - i;
       const color = lambda(x, y);
-      if (!color) return;
+      if (!color) continue;
       this._image[k] = color.red * MAX_8BIT;
       this._image[k + 1] = color.green * MAX_8BIT;
       this._image[k + 2] = color.blue * MAX_8BIT;
@@ -67,16 +68,16 @@ export default class Canvas {
           const x = j;
           const y = h - 1 - i;
           const color = lambda(x, y);
-          if (!color) return;
+          if (!color) continue;
           this._image[k] = this._image[k] + (color.red * MAX_8BIT - this._image[k]) / it;
           this._image[k + 1] = this._image[k + 1] + (color.green * MAX_8BIT - this._image[k + 1]) / it;
           this._image[k + 2] = this._image[k + 2] + (color.blue * MAX_8BIT - this._image[k + 2]) / it;
           this._image[k + 3] = MAX_8BIT;
         }
-        if(it < 100) it++
+        if (it < 100) it++
         return this.paint();
       },
-      drawLine: () => {}
+      drawLine: () => { }
     }
   }
 

@@ -40,7 +40,7 @@ export default class Scene {
     for (let i = 0; i < elements.length; i++) {
       const interception = elements[i].interceptWith(ray)
       if (!interception) continue;
-      const [pos, _] = interception;
+      const [pos, _, t] = interception;
       const distance = ray
         .init
         .sub(pos)

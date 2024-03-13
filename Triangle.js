@@ -24,10 +24,11 @@ export default class Triangle {
     }
 
     distanceToPoint(p) {
+        // TODO
         return Number.MAX_VALUE;
     }
 
-    normalToPoint(p) {
+    normalToPoint() {
         return this.faceNormal;
     }
 
@@ -36,7 +37,7 @@ export default class Triangle {
         const p = ray.init.sub(this.positions[0]);
         const n = this.faceNormal;
         const t = - n.dot(p) / n.dot(v);
-        if (t < 0) return;
+        if (t <= 0) return;
         const x = ray.trace(t);
         for (let i = 0; i < this.positions.length; i++) {
             const xi = this.positions[i];

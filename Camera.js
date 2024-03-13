@@ -1,6 +1,6 @@
 import Color from "./Color.js";
 import Ray from "./Ray.js";
-import Vec, { Vec3 } from "./Vector.js";
+import Vec, { Vec2, Vec3 } from "./Vector.js";
 
 const PARAMS = {
   samplesPerPxl: 1,
@@ -100,11 +100,36 @@ export default class Camera {
     )
     return pointInCamCoord;
   }
+
+
+  rasterLine({ canvas, elem }) {
+    const w = canvas.width;
+    const h = canvas.height;
+    const lineElem = elem;
+    const { color, positions } = lineElem;
+    const { distanceToPlane } = this;
+    // camera coords
+    const pointsInCamCoord = positions.map((p) => this.toCameraCoord(p));
+    //project
+    const projectedPoints = pointsInCamCoord
+      .map(p => p.scale(distanceToPlane / p.z))
+    // integer coordinates
+    const intPoints = projectedPoints
+      .map((p) => {
+        let x = w / 2 + p.x * w;
+        let y = h / 2 + p.y * h;
+        x = Math.floor(x);
+        y = Math.floor(y);
+        return Vec2(x, y);
+      })
+    canvas.drawLine(intPoints[0], intPoints[1], () => color);
+  }
 }
+
 
 function trace(ray, scene, options) {
   const { samples, bounces } = options;
-  if (bounces === 0) return Color.BLACK;
+  if (bounces < 0) return Color.BLACK;
   const interception = scene.interceptWith(ray)
   if (!interception) return Color.BLACK;
   const [p, e] = interception;
@@ -121,14 +146,14 @@ function trace(ray, scene, options) {
 
 function scatterRay(point, element, ray) {
   let normal = element.normalToPoint(point);
-  normal = ray.dir.dot(normal) < 0 ? normal : normal.scale(-1);
+  normal = ray.dir.dot(normal) <= 0 ? normal : normal.scale(-1);
   let randomInSphere = undefined;
   while (true) {
     const random = Vec.RANDOM(3).map(x => 2 * x - 1);
     if (random.squareLength() >= 1) continue;
-    randomInSphere = random;
+    randomInSphere = random.normalize();
     break;
   }
-  if (randomInSphere.dot(normal) >= 0) return Ray(point, randomInSphere.normalize());
-  return Ray(point, randomInSphere.scale(-1).normalize());
+  if (randomInSphere.dot(normal) >= 0) return Ray(point, randomInSphere);
+  return Ray(point, randomInSphere.scale(-1));
 }

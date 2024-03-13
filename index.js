@@ -4,7 +4,8 @@ import Color from "./Color.js";
 import Scene from "./Scene.js";
 import Triangle from "./Triangle.js";
 import Point from "./Point.js";
-import { Vec2, Vec3 } from "./Vector.js";
+import Vec, { Vec2, Vec3 } from "./Vector.js";
+import Ray from "./Ray.js";
 
 function toggleFullScreen(elem) {
     if (!document.fullscreenElement &&    // alternative standard method
@@ -134,7 +135,7 @@ function toggleFullScreen(elem) {
     scene.add(
         Triangle
             .builder()
-            .name("light")
+            .name("light-1")
             .colors(Color.WHITE, Color.WHITE, Color.WHITE)
             .positions(Vec3(1, 0, 0), Vec3(0, 1, 0), Vec3(0, 0, 1))
             .emissive(true)
@@ -149,11 +150,46 @@ function toggleFullScreen(elem) {
             .build(),
     )
 
+
+
+    function debugTrace(p, n, bounces) {
+        if (bounces <= 0) return;
+        function scatter() {
+            let randomInSphere = undefined;
+            while (true) {
+                const random = Vec.RANDOM(3).map(x => 2 * x - 1);
+                if (random.squareLength() >= 1) continue;
+                randomInSphere = random.normalize();
+                break;
+            }
+            if (!n) return randomInSphere;
+            if (randomInSphere.dot(n) >= 0) return randomInSphere;
+            return randomInSphere.scale(-1);
+        }
+        const v = scatter();
+        const hit = scene.interceptWith(Ray(p, v))
+        if (!hit) {
+            if (n) camera.rasterLine({ canvas, elem: { color: Color.ofRGB(1, 0, 1), positions: [p, p.add(v.scale(2))] } });
+            return;
+        }
+        const [hitP, elem] = hit;
+        if (elem.emissive) {
+            camera.rasterLine({ canvas, elem: { color: elem.color || elem.colors[0], positions: [p, hitP] } });
+            return;
+        }
+        camera.rasterLine({ canvas, elem: { color: Color.ofRGB(0, 1, 1), positions: [p, hitP] } });
+        let normal = elem.normalToPoint(hitP);
+        // normal = v.dot(normal) <= 0 ? normal : normal.scale(-1);
+        debugTrace(hitP, normal, bounces - 1);
+    }
+
     // play
     const play = async ({ time, oldT }) => {
         const newT = new Date().getTime();
         const dt = (new Date().getTime() - oldT) * 1e-3;
         camera.sceneShot(scene).to(exposedCanvas);
+
+        // debugTrace(Vec3(0.5, 0.5, 0.5), undefined, 10);
         setTimeout(() => play({
             oldT: newT,
             time: time + dt,
