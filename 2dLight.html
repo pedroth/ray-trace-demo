@@ -95,7 +95,7 @@
             return x.sub(v.scale(h)).length() - radius;
         }
 
-        function normal(p) {
+        line.normal = (p) => {
             const epsilon = 1e-3;
             const f = line.distanceTo(p);
             const fx = line.distanceTo(p.add(Vec2(epsilon, 0)));
@@ -105,7 +105,7 @@
 
         line.interceptWith = (init, dir) => {
             const p = sdfIntercept(init, dir, line);
-            if (p) return [p, normal(p)];
+            if (p) return [p, line.normal(p)];
         }
         return line;
     }
@@ -115,9 +115,13 @@
         point.distanceTo = (p) => {
             return p.sub(position).length() - radius;
         }
+
+        point.normal = (p) => {
+            return p.sub(position).normalize()
+        }
         point.interceptWith = (init, dir) => {
             const p = sdfIntercept(init, dir, point);
-            if (p) return [p, p.sub(position).normalize()];
+            if (p) return [p, point.normal(p)];
         }
         return point;
     }
@@ -155,6 +159,40 @@
         if (e.emissive) return color;
         const finalC = trace(p, n, bounces - 1);
         return finalC.mul(color);
+    }
+
+    function biTrace(x, normal, bounces) {
+        if (bounces < 0) return colorFromLight(x, normal);
+        const theta = 2 * Math.PI * Math.random();
+        let v = Vec2(Math.cos(theta), Math.sin(theta));
+        if (normal && v.dot(normal) < 0) {
+            v = v.scale(-1);
+        }
+        const hit = intersectScene(x, v);
+        if (!hit) return Color.BLACK;
+
+        const [p, n, e] = hit;
+        const color = e.color;
+        if (e.emissive) return color;
+        const finalC = biTrace(p, n, bounces - 1);
+        return finalC.mul(color);
+    }
+
+    function colorFromLight(p, n) {
+        const emissiveElements = scene.filter((e) => e.emissive);
+        for (let i = 0; i < emissiveElements.length; i++) {
+            const light = emissiveElements[i];
+            const v = light.normal(p).scale(-1);
+            if (v.dot(n) < 0) continue;
+            const hit = intersectScene(p, v);
+            if (!hit) continue;
+            if (hit) {
+                const [p, n, e] = hit;
+                const color = e.color;
+                if (e.emissive) return color;
+            };
+        }
+        return Color.BLACK;
     }
 
 
@@ -212,7 +250,7 @@
             .map((x, y) => {
                 const px = scale * (2 * (x - center.x) / w - 1);
                 const py = scale * (2 * (y - center.y) / h - 1);
-                return trace(Vec2(px, py), undefined, 10);
+                return biTrace(Vec2(px, py), undefined, 10);
             })
         // exposedCanvas
         //     .map((x, y) => {
