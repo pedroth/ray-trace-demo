@@ -90,9 +90,9 @@
         const n = Vec2(-v.y, v.x).normalize();
         const line = { name, positions, color, radius, emissive };
         line.distanceTo = (p) => {
-            const x = p.sub(positions[0]);
+            const x = p.sub(line.positions[0]);
             const h = Math.min(1, Math.max(0, x.dot(v) / v.dot(v)));
-            return x.sub(v.scale(h)).length() - radius;
+            return x.sub(v.scale(h)).length() - line.radius;
         }
 
         line.normal = (p) => {
@@ -113,11 +113,11 @@
     function Point({ name, position, color, radius, emissive }) {
         const point = { name, position, color, radius, emissive };
         point.distanceTo = (p) => {
-            return p.sub(position).length() - radius;
+            return p.sub(point.position).length() - point.radius;
         }
 
         point.normal = (p) => {
-            return p.sub(position).normalize()
+            return p.sub(point.position).normalize()
         }
         point.interceptWith = (init, dir) => {
             const p = sdfIntercept(init, dir, point);
@@ -242,16 +242,33 @@
         Line({ name: "wall-2", positions: [Vec2(0.5, -1), Vec2(1.0, -1)], radius: 0.1, color: Color.BLUE }),
     ]
 
+
+
+
     // play
     const play = async ({ time, oldT }) => {
         const newT = new Date().getTime();
         const dt = (new Date().getTime() - oldT) * 1e-3;
+        // exposedCanvas
+        //     .map((x, y) => {
+        //         const px = scale * (2 * (x - center.x) / w - 1);
+        //         const py = scale * (2 * (y - center.y) / h - 1);
+        //         return trace(Vec2(px, py), undefined, 10);
+        //     })
         exposedCanvas
             .map((x, y) => {
                 const px = scale * (2 * (x - center.x) / w - 1);
                 const py = scale * (2 * (y - center.y) / h - 1);
-                return biTrace(Vec2(px, py), undefined, 10);
+                return biTrace(Vec2(px, py), undefined, 1).toGamma(0.1);
             })
+        // exposedCanvas
+        //     .map((x, y) => {
+        //         const px = scale * (2 * (x - center.x) / w - 1);
+        //         const py = scale * (2 * (y - center.y) / h - 1);
+        //         return trace(Vec2(px, py), undefined, 10).scale(0.75)
+        //             .add(biTrace(Vec2(px, py), undefined, 2).scale(0.25))
+        //             .toGamma(0.1);
+        //     })
         // exposedCanvas
         //     .map((x, y) => {
         //         let c = Color.BLACK;

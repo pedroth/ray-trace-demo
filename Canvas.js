@@ -52,7 +52,7 @@ export default class Canvas {
     return this.paint();
   }
 
-  exposure() {
+  exposure(time = 100) {
     let it = 1;
     return {
       width: this.width,
@@ -73,7 +73,7 @@ export default class Canvas {
           this._image[k + 2] = this._image[k + 2] + (color.blue * MAX_8BIT - this._image[k + 2]) / it;
           this._image[k + 3] = MAX_8BIT;
         }
-        if (it < 100) it++
+        if (it < time) it++
         return this.paint();
       },
       drawLine: () => { }
