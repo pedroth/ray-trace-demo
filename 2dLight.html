@@ -64,19 +64,19 @@
 
 
     function sdfIntercept(init, dir, element) {
-        const maxIte = 100;
-        const epsilon = 1e-6;
+        const maxIte = 50;
+        const epsilon = 1e-3;
         let p = init;
         let t = element.distanceTo(p);
         let minT = t;
         for (let i = 0; i < maxIte; i++) {
-            p = init.add(dir.scale(t));
+            p = init.add(dir.scale(t * 0.999));
             const d = element.distanceTo(p);
             t += d;
             if (d < epsilon) {
-                return p;
+                return p.add(dir.scale(-epsilon));
             }
-            if (d > 2 * minT) {
+            if (d > minT) {
                 return;
             }
             minT = d;
@@ -96,15 +96,11 @@
         }
 
         function normal(p) {
-            const x = p.sub(positions[0]);
-            const dot = x.dot(v);
-            if (dot > 0 && dot < 1) return n.scale(Math.sign(x.dot(n)));
-            const end = p.sub(positions[1]);
-            if (x.length() < end.length()) {
-                return x.normalize();
-            } else {
-                return end.normalize();
-            }
+            const epsilon = 1e-3;
+            const f = line.distanceTo(p);
+            const fx = line.distanceTo(p.add(Vec2(epsilon, 0)));
+            const fy = line.distanceTo(p.add(Vec2(0, epsilon)));
+            return Vec2((fx - f) / epsilon, (fy - f) / epsilon).normalize();
         }
 
         line.interceptWith = (init, dir) => {
@@ -126,13 +122,6 @@
         return point;
     }
 
-    const scene = [
-        Point({ name: "light", position: Vec2(), radius: 0.1, emissive: true, color: Color.WHITE }),
-        Line({ name: "left", positions: [Vec2(-1.5, -1.5), Vec2(-1.5, 1.5)], radius: 0.1, color: Color.RED }),
-        Line({ name: "right", positions: [Vec2(1.5, 1.5), Vec2(1.5, -1.5)], radius: 0.1, color: Color.BLUE }),
-        Line({ name: "top", positions: [Vec2(-1.5, 1.5), Vec2(1.5, 1.5)], radius: 0.1, color: Color.WHITE }),
-    ]
-
     function intersectScene(init, dir) {
         let closest = undefined;
         let minDist = Number.MAX_VALUE;
@@ -152,17 +141,12 @@
     }
 
     function trace(x, normal, bounces) {
-        // const hit = pathToLight(x, normal, bounces);
-        // if(!hit) return Color.BLACK;
-        // const [p, n, e] = hit;
-        // return e.color;
-        if (bounces === 0) return Color.BLACK;
+        if (bounces < 0) return Color.BLACK;
         const theta = 2 * Math.PI * Math.random();
         let v = Vec2(Math.cos(theta), Math.sin(theta));
         if (normal && v.dot(normal) < 0) {
             v = v.scale(-1);
         }
-
         const hit = intersectScene(x, v);
         if (!hit) return Color.BLACK;
 
@@ -173,46 +157,52 @@
         return finalC.mul(color);
     }
 
-    function pathToLight(x, normal, bounces) {
-        if (bounces === 0) return;
-        const theta = 2 * Math.PI * Math.random();
-        let v = Vec2(Math.cos(theta), Math.sin(theta));
-        if (normal && v.dot(normal) < 0) {
-            v = v.scale(-1);
-        }
-        const hit = intersectScene(x, v);
-        if (!hit) return;
-        const [p, n, e] = hit;
-        const color = e.color;
-        if (e.emissive) return hit;
-        return pathToLight(p, n, bounces - 1);
-    }
-
 
     function debugTrace(x, normal, bounces) {
-        if (bounces === 0) return
+        if (bounces < 0) return
         const theta = 2 * Math.PI * Math.random();
         let v = Vec2(Math.cos(theta), Math.sin(theta));
-        if (normal && v.dot(normal) < 0) {
+        if (normal && v.dot(normal) <= 0) {
             v = v.scale(-1);
         }
-
         const hit = intersectScene(x, v);
-        if (!hit) return;
-
-
+        if (!hit) {
+            if (normal) {
+                let p = x.add(v.scale(2));
+                canvas.drawLine(
+                    Vec2(((x.x / scale) + 1) * (w / 2) + center.x, ((x.y / scale) + 1) * (h / 2) + center.y),
+                    Vec2(((p.x / scale) + 1) * (w / 2) + center.x, ((p.y / scale) + 1) * (h / 2) + center.y),
+                    () => Color.ofRGB(1, 0, 1)
+                )
+            }
+            return;
+        }
         const [p, n, e] = hit;
         const color = e.color;
-
+        if (e.emissive) {
+            canvas.drawLine(
+                Vec2(((x.x / scale) + 1) * (w / 2) + center.x, ((x.y / scale) + 1) * (h / 2) + center.y),
+                Vec2(((p.x / scale) + 1) * (w / 2) + center.x, ((p.y / scale) + 1) * (h / 2) + center.y),
+                () => e.color
+            )
+            return;
+        };
         canvas.drawLine(
             Vec2(((x.x / scale) + 1) * (w / 2) + center.x, ((x.y / scale) + 1) * (h / 2) + center.y),
             Vec2(((p.x / scale) + 1) * (w / 2) + center.x, ((p.y / scale) + 1) * (h / 2) + center.y),
             () => color
         )
-
-        if (e.emissive) return;
         debugTrace(p, n, bounces - 1);
     }
+
+    const scene = [
+        Point({ name: "light", position: Vec2(), radius: 0.1, emissive: true, color: Color.WHITE }),
+        Line({ name: "left", positions: [Vec2(-1.5, -1.5), Vec2(-1.5, 1.5)], radius: 0.1, color: Color.RED }),
+        Line({ name: "right", positions: [Vec2(1.5, 1.5), Vec2(1.5, -1.5)], radius: 0.1, color: Color.GREEN }),
+        Line({ name: "top", positions: [Vec2(-1.5, 1.5), Vec2(1.5, 1.5)], radius: 0.1, color: Color.WHITE }),
+        Line({ name: "wall-1", positions: [Vec2(-0.5, -0.5), Vec2(0, -0.5)], radius: 0.1, color: Color.BLUE }),
+        Line({ name: "wall-2", positions: [Vec2(0.5, -1), Vec2(1.0, -1)], radius: 0.1, color: Color.BLUE }),
+    ]
 
     // play
     const play = async ({ time, oldT }) => {
@@ -224,15 +214,30 @@
                 const py = scale * (2 * (y - center.y) / h - 1);
                 return trace(Vec2(px, py), undefined, 10);
             })
+        // exposedCanvas
+        //     .map((x, y) => {
+        //         let c = Color.BLACK;
+        //         let step = [-1, 0, 1];
+        //         let n = step.length;
+        //         let nn = n * n;
+        //         for (let i = 0; i < nn; i++) {
+        //             let j = step[Math.floor(i / n)];
+        //             let k = step[i % n];
+        //             const px = scale * (2 * ((x + j) - center.x) / w - 1);
+        //             const py = scale * (2 * ((y + k) - center.y) / h - 1);
+        //             c = c.add(trace(Vec2(px, py), undefined, 10));
+        //         }
+        //         return c.scale(1 / nn).toGamma(0.0001);
+        //     })
+        // exposedCanvas.map((x, y) => Color.BLACK);
         // debugTrace(
         //     Vec2(
         //         scale * (2 * ((pointer.x - center.x) / w) - 1),
         //         scale * (2 * ((pointer.y - center.y) / h) - 1),
         //     ),
         //     undefined,
-        //     10
+        //     1
         // )
-        // if(Math.random() < 0.01) canvas.fill(() => Color.BLACK);
         setTimeout(() => play({
             oldT: newT,
             time: time + dt,
