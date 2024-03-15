@@ -290,18 +290,18 @@
     const play = async ({ time, oldT }) => {
         const newT = new Date().getTime();
         const dt = (new Date().getTime() - oldT) * 1e-3;
-        exposedCanvas
-            .map((x, y) => {
-                const px = scale * (2 * (x - center.x) / w - 1);
-                const py = scale * (2 * (y - center.y) / h - 1);
-                return trace(Vec2(px, py), undefined, 10);
-            })
         // exposedCanvas
         //     .map((x, y) => {
         //         const px = scale * (2 * (x - center.x) / w - 1);
         //         const py = scale * (2 * (y - center.y) / h - 1);
-        //         return traceCache(Vec2(px, py), undefined, 10);
+        //         return trace(Vec2(px, py), undefined, 10);
         //     })
+        exposedCanvas
+            .map((x, y) => {
+                const px = scale * (2 * (x - center.x) / w - 1);
+                const py = scale * (2 * (y - center.y) / h - 1);
+                return traceCache(Vec2(px, py), undefined, 10);
+            })
         // exposedCanvas
         //     .map((x, y) => {
         //         const px = scale * (2 * (x - center.x) / w - 1);
