@@ -29,7 +29,29 @@
     const h = 480 / 2;
     const canvas = Canvas.ofSize(w, h);
     let exposedCanvas = canvas.exposure();
-
+    const lightCache = (gridSpace) => {
+        const probabilityMap = {};
+        let total = 1;
+        const ans = {};
+        ans.hash = (p) => {
+            const integerCoord = p.map(z => Math.floor(z / gridSpace));
+            const h = (integerCoord.x * 92837111) ^ (integerCoord.y * 689287499);
+            return Math.abs(h);
+        }
+        ans.put = p => {
+            total++;
+            const h = ans.hash(p);
+            probabilityMap[h] = (probabilityMap[h] || 1) + 1;
+        }
+        ans.get = p => {
+            const h = ans.hash(p);
+            const count = probabilityMap[h];
+            if (!count) return 1;
+            return Math.log(-probabilityMap[h] / total);
+        }
+        return ans;
+    }
+    let lightField = lightCache(1);
 
     // mouse handling
     let mousedown = false;
@@ -161,6 +183,27 @@
         return finalC.mul(color);
     }
 
+    function traceCache(x, normal, bounces) {
+        const prob = lightField.get(x);
+        if (Math.random() >= prob) return Color.BLACK;
+        if (bounces < 0) return Color.BLACK;
+        const theta = 2 * Math.PI * Math.random();
+        let v = Vec2(Math.cos(theta), Math.sin(theta));
+        if (normal && v.dot(normal) < 0) {
+            v = v.scale(-1);
+        }
+        const hit = intersectScene(x, v);
+        if (!hit) return Color.BLACK;
+        const [p, n, e] = hit;
+        const color = e.color;
+        if (e.emissive) return color;
+        const finalC = traceCache(p, n, bounces - 1);
+        if (!finalC.equals(Color.BLACK)) {
+            lightField.put(x);
+        }
+        return finalC.mul(color);
+    }
+
     function biTrace(x, normal, bounces) {
         if (bounces < 0) return colorFromLight(x, normal);
         const theta = 2 * Math.PI * Math.random();
@@ -243,24 +286,28 @@
     ]
 
 
-
-
     // play
     const play = async ({ time, oldT }) => {
         const newT = new Date().getTime();
         const dt = (new Date().getTime() - oldT) * 1e-3;
-        // exposedCanvas
-        //     .map((x, y) => {
-        //         const px = scale * (2 * (x - center.x) / w - 1);
-        //         const py = scale * (2 * (y - center.y) / h - 1);
-        //         return trace(Vec2(px, py), undefined, 10);
-        //     })
         exposedCanvas
             .map((x, y) => {
                 const px = scale * (2 * (x - center.x) / w - 1);
                 const py = scale * (2 * (y - center.y) / h - 1);
-                return biTrace(Vec2(px, py), undefined, 1).toGamma(0.1);
+                return trace(Vec2(px, py), undefined, 10);
             })
+        // exposedCanvas
+        //     .map((x, y) => {
+        //         const px = scale * (2 * (x - center.x) / w - 1);
+        //         const py = scale * (2 * (y - center.y) / h - 1);
+        //         return traceCache(Vec2(px, py), undefined, 10);
+        //     })
+        // exposedCanvas
+        //     .map((x, y) => {
+        //         const px = scale * (2 * (x - center.x) / w - 1);
+        //         const py = scale * (2 * (y - center.y) / h - 1);
+        //         return biTrace(Vec2(px, py), undefined, 3);
+        //     })
         // exposedCanvas
         //     .map((x, y) => {
         //         const px = scale * (2 * (x - center.x) / w - 1);
@@ -293,6 +340,7 @@
         //     undefined,
         //     1
         // )
+        // scene[0].position = Vec2(Math.cos(time), Math.sin(time));
         setTimeout(() => play({
             oldT: newT,
             time: time + dt,
