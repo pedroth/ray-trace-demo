@@ -37,7 +37,7 @@ export default class Triangle {
         const p = ray.init.sub(this.positions[0]);
         const n = this.faceNormal;
         const t = - n.dot(p) / n.dot(v);
-        if (t <= 0) return;
+        if (t <= 1e-9) return;
         const x = ray.trace(t);
         for (let i = 0; i < this.positions.length; i++) {
             const xi = this.positions[i];
@@ -56,7 +56,7 @@ export default class Triangle {
     }
 
     sample() {
-        return this.tangents[0].scale(Math.random()).add(this.tangents[1].scale(Math.random()));
+        return this.tangents[0].scale(Math.random()).add(this.tangents[1].scale(Math.random())).add(this.positions[0]);
     }
 
     static builder() {

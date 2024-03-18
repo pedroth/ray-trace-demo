@@ -87,10 +87,12 @@ export default class Camera {
         const epsilon = Vec.RANDOM(3).scale(variance);
         const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
         const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
-        c = c.add(trace(r, scene, { bounces }));
+        // c = c.add(trace(r, scene, { bounces }));
+        // c = c.add(rayTrace(r, scene, { bounces }));
+        c = c.add(trace(r, scene, { bounces }).add(rayTrace(r, scene, { bounces }))).scale(0.5);
       }
-      // return c.scale(1 / samplesPerPxl).toGamma(1e-32);
-      return c.scale(1 / samplesPerPxl);
+      return c.scale(1 / samplesPerPxl).toGamma(1e-32);
+      // return c.scale(1 / samplesPerPxl);
     }
     return this.rayShot(lambda, params);
   }
@@ -131,20 +133,38 @@ export default class Camera {
 }
 
 function trace(ray, scene, options) {
-  const { samples, bounces } = options;
-  if (bounces < 0) return colorFromLight(ray.init, scene);
-  // if (bounces < 0) return Color.BLACK;
+  const { bounces } = options;
+  if (bounces < 0) return Color.BLACK;
   const interception = scene.interceptWith(ray)
   if (!interception) return Color.BLACK;
   const [p, e] = interception;
   const color = e.color ?? e.colors[0];
   if (e.emissive) return color;
   let r = scatterRay(p, e, ray);
-  const finalC = trace(
+  let finalC = trace(
     r,
     scene,
-    { bounces: bounces - 1, samples }
+    { bounces: bounces - 1 }
   );
+  finalC = finalC.scale(Math.max(0, r.dir.dot(e.normalToPoint(r.init))));
+  return color.mul(finalC);
+}
+
+function rayTrace(ray, scene, options) {
+  const { bounces } = options;
+  if (bounces < 0) return colorFromLight(ray.init, scene);
+  const interception = scene.interceptWith(ray)
+  if (!interception) return Color.BLACK;
+  const [p, e] = interception;
+  const color = e.color ?? e.colors[0];
+  if (e.emissive) return color;
+  let r = scatterRay(p, e, ray);
+  let finalC = rayTrace(
+    r,
+    scene,
+    { bounces: bounces - 1 }
+  );
+  finalC = finalC.scale(Math.max(0, r.dir.dot(e.normalToPoint(r.init))));
   return color.mul(finalC);
 }
 

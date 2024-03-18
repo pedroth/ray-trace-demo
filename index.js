@@ -74,13 +74,13 @@ function toggleFullScreen(elem) {
             .builder()
             .name("left-1")
             .colors(Color.RED, Color.RED, Color.RED)
-            .positions(Vec3(), Vec3(3, 0, 0), Vec3(3, 0, 3))
+            .positions(Vec3(3, 0, 3), Vec3(3, 0, 0), Vec3())
             .build(),
         Triangle
             .builder()
             .name("left-2")
             .colors(Color.RED, Color.RED, Color.RED)
-            .positions(Vec3(3, 0, 3), Vec3(0, 0, 3), Vec3())
+            .positions(Vec3(), Vec3(0, 0, 3), Vec3(3, 0, 3))
             .build(),
         Triangle
             .builder()
@@ -110,13 +110,13 @@ function toggleFullScreen(elem) {
             .builder()
             .name("top-1")
             .colors(Color.WHITE, Color.WHITE, Color.WHITE)
-            .positions(Vec3(0, 0, 3), Vec3(3, 0, 3), Vec3(3, 3, 3))
+            .positions(Vec3(3, 3, 3), Vec3(3, 0, 3), Vec3(0, 0, 3))
             .build(),
         Triangle
             .builder()
             .name("top-2")
             .colors(Color.WHITE, Color.WHITE, Color.WHITE)
-            .positions(Vec3(3, 3, 3), Vec3(0, 3, 3), Vec3(0, 0, 3))
+            .positions(Vec3(0, 0, 3), Vec3(0, 3, 3), Vec3(3, 3, 3) )
             .build(),
         Triangle
             .builder()
