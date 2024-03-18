@@ -3,9 +3,8 @@ import Ray from "./Ray.js";
 import Vec, { Vec2, Vec3 } from "./Vector.js";
 
 const PARAMS = {
-  samplesPerPxl: 2,
-  samples: 1,
-  bounces: 10,
+  samplesPerPxl: 1,
+  bounces: 1,
   variance: 0.001
 };
 export default class Camera {
@@ -80,7 +79,6 @@ export default class Camera {
 
   sceneShot(scene, params = PARAMS) {
     const bounces = params.bounces;
-    const samples = params.samples;
     const variance = params.variance;
     const samplesPerPxl = params.samplesPerPxl;
     const lambda = ray => {
@@ -89,10 +87,10 @@ export default class Camera {
         const epsilon = Vec.RANDOM(3).scale(variance);
         const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
         const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
-        c = c.add(trace(r, scene, { bounces, samples }));
+        c = c.add(trace(r, scene, { bounces }));
       }
-      return c.scale(1 / samplesPerPxl).toGamma(0.000000000001);
-      // return c.scale(1 / samplesPerPxl);
+      // return c.scale(1 / samplesPerPxl).toGamma(1e-32);
+      return c.scale(1 / samplesPerPxl);
     }
     return this.rayShot(lambda, params);
   }
@@ -132,10 +130,10 @@ export default class Camera {
   }
 }
 
-
 function trace(ray, scene, options) {
   const { samples, bounces } = options;
-  if (bounces < 0) return Color.BLACK;
+  if (bounces < 0) return colorFromLight(ray.init, scene);
+  // if (bounces < 0) return Color.BLACK;
   const interception = scene.interceptWith(ray)
   if (!interception) return Color.BLACK;
   const [p, e] = interception;
@@ -148,6 +146,26 @@ function trace(ray, scene, options) {
     { bounces: bounces - 1, samples }
   );
   return color.mul(finalC);
+}
+
+function colorFromLight(p, scene) {
+  const emissiveElements = scene.getElements().filter((e) => e.emissive);
+  let c = Color.BLACK
+  for (let i = 0; i < emissiveElements.length; i++) {
+    const light = emissiveElements[i];
+    const lightP = light.sample();
+    const v = lightP.sub(p).normalize();
+    const hit = scene.interceptWith(Ray(p, v));
+    if (!hit) continue;
+    if (hit) {
+      const [, e] = hit;
+      const color = e.color ?? e.colors[0];
+      if (e.emissive) {
+        c = c.add(color);
+      }
+    }
+  }
+  return c.scale(1 / emissiveElements.length);
 }
 
 function scatterRay(point, element, ray) {

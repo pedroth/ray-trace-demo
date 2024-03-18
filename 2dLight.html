@@ -125,6 +125,11 @@
             return Vec2((fx - f) / epsilon, (fy - f) / epsilon).normalize();
         }
 
+        line.sample = () => {
+            const r = Math.random();
+            return positions[0].scale(1 - r).add(positions[1].scale(r));
+        }
+
         line.interceptWith = (init, dir) => {
             const p = sdfIntercept(init, dir, line);
             if (p) return [p, line.normal(p)];
@@ -141,6 +146,16 @@
         point.normal = (p) => {
             return p.sub(point.position).normalize()
         }
+
+        point.sample = () => {
+            const theta = 2 * Math.PI * Math.random();
+            return Vec2(
+                point.radius * Math.cos(theta) + point.position.x,
+                point.radius * Math.sin(theta) + point.position.y
+            );
+        }
+
+
         point.interceptWith = (init, dir) => {
             const p = sdfIntercept(init, dir, point);
             if (p) return [p, point.normal(p)];
@@ -204,7 +219,7 @@
         return finalC.mul(color);
     }
 
-    function biTrace(x, normal, bounces) {
+    function lightTrace(x, normal, bounces) {
         if (bounces < 0) return colorFromLight(x, normal);
         const theta = 2 * Math.PI * Math.random();
         let v = Vec2(Math.cos(theta), Math.sin(theta));
@@ -217,25 +232,28 @@
         const [p, n, e] = hit;
         const color = e.color;
         if (e.emissive) return color;
-        const finalC = biTrace(p, n, bounces - 1);
+        const finalC = lightTrace(p, n, bounces - 1);
         return finalC.mul(color);
     }
 
     function colorFromLight(p, n) {
         const emissiveElements = scene.filter((e) => e.emissive);
+        let c = Color.BLACK
         for (let i = 0; i < emissiveElements.length; i++) {
             const light = emissiveElements[i];
-            const v = light.normal(p).scale(-1);
-            if (v.dot(n) < 0) continue;
+            const lightP = light.sample();
+            const v = lightP.sub(p).normalize();
             const hit = intersectScene(p, v);
             if (!hit) continue;
             if (hit) {
                 const [p, n, e] = hit;
                 const color = e.color;
-                if (e.emissive) return color;
-            };
+                if (e.emissive) {
+                    c = c.add(color);
+                }
+            }
         }
-        return Color.BLACK;
+        return c.scale(1 / emissiveElements.length);
     }
 
 
@@ -296,24 +314,24 @@
         //         const py = scale * (2 * (y - center.y) / h - 1);
         //         return trace(Vec2(px, py), undefined, 10);
         //     })
-        exposedCanvas
-            .map((x, y) => {
-                const px = scale * (2 * (x - center.x) / w - 1);
-                const py = scale * (2 * (y - center.y) / h - 1);
-                return traceCache(Vec2(px, py), undefined, 10);
-            })
         // exposedCanvas
         //     .map((x, y) => {
         //         const px = scale * (2 * (x - center.x) / w - 1);
         //         const py = scale * (2 * (y - center.y) / h - 1);
-        //         return biTrace(Vec2(px, py), undefined, 3);
+        //         return traceCache(Vec2(px, py), undefined, 10);
+        //     })
+        // exposedCanvas
+        //     .map((x, y) => {
+        //         const px = scale * (2 * (x - center.x) / w - 1);
+        //         const py = scale * (2 * (y - center.y) / h - 1);
+        //         return lightTrace(Vec2(px, py), undefined, 1);
         //     })
         // exposedCanvas
         //     .map((x, y) => {
         //         const px = scale * (2 * (x - center.x) / w - 1);
         //         const py = scale * (2 * (y - center.y) / h - 1);
         //         return trace(Vec2(px, py), undefined, 10).scale(0.75)
-        //             .add(biTrace(Vec2(px, py), undefined, 2).scale(0.25))
+        //             .add(lightTrace(Vec2(px, py), undefined, 2).scale(0.25))
         //             .toGamma(0.1);
         //     })
         // exposedCanvas
@@ -331,15 +349,15 @@
         //         }
         //         return c.scale(1 / nn).toGamma(0.0001);
         //     })
-        // exposedCanvas.map((x, y) => Color.BLACK);
-        // debugTrace(
-        //     Vec2(
-        //         scale * (2 * ((pointer.x - center.x) / w) - 1),
-        //         scale * (2 * ((pointer.y - center.y) / h) - 1),
-        //     ),
-        //     undefined,
-        //     1
-        // )
+        exposedCanvas.map((x, y) => Color.BLACK);
+        debugTrace(
+            Vec2(
+                scale * (2 * ((pointer.x - center.x) / w) - 1),
+                scale * (2 * ((pointer.y - center.y) / h) - 1),
+            ),
+            undefined,
+            1
+        )
         // scene[0].position = Vec2(Math.cos(time), Math.sin(time));
         setTimeout(() => play({
             oldT: newT,

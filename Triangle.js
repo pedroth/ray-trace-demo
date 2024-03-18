@@ -55,6 +55,10 @@ export default class Triangle {
         return this.boundingBox;
     }
 
+    sample() {
+        return this.tangents[0].scale(Math.random()).add(this.tangents[1].scale(Math.random()));
+    }
+
     static builder() {
         return new TriangleBuilder();
     }

@@ -37,6 +37,18 @@ class Point {
         return this.boundingBox;
     }
 
+
+    sample() {
+        let randomInSphere = undefined;
+        while (true) {
+            const random = Vec.RANDOM(this.position.dim).map(x => 2 * x - 1);
+            if (random.squareLength() >= 1) continue;
+            randomInSphere = random.normalize();
+            break;
+        }
+        return randomInSphere.scale(this.radius).add(this.position);
+    }
+
     static builder() {
         return new PointBuilder();
     }
