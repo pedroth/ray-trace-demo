@@ -25,8 +25,12 @@ class Point {
     }
 
     interceptWith(ray) {
+        const epsilon = 1e-9;
         const t = sphereInterception(this, ray);
-        if (t) return [ray.trace(t), this];
+        if (t) {
+            let pointOfIntersection = ray.trace(t - epsilon);
+            return [pointOfIntersection, this];
+        }
     }
 
     getBoundingBox() {

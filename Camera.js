@@ -3,8 +3,8 @@ import Ray from "./Ray.js";
 import Vec, { Vec2, Vec3 } from "./Vector.js";
 
 const PARAMS = {
-  samplesPerPxl: 5,
-  bounces: 2,
+  samplesPerPxl: 1,
+  bounces: 7,
   variance: 0.001
 };
 export default class Camera {

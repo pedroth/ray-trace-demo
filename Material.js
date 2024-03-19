@@ -17,7 +17,6 @@ export function Metallic(fuzz = 0) {
         scatter(inRay, point, element) {
             fuzz = Math.min(1, Math.max(0, fuzz));
             let normal = element.normalToPoint(point);
-            // normal = inRay.dir.dot(normal) <= 0 ? normal : normal.scale(-1);
             const v = inRay.dir;
             let reflected = v.sub(normal.scale(2 * v.dot(normal)));
             reflected = reflected.add(randomPointInSphere().scale(fuzz)).normalize();
@@ -26,11 +25,19 @@ export function Metallic(fuzz = 0) {
     }
 }
 
-export function Transparent(alpha=1) {
+export function Transparent(alpha = 1) {
     return {
         scatter(inRay, point, element) {
-            if(Math.random() < alpha) return Lambertian().scatter(inRay, point, element);
-            return Ray(point, inRay.dir.scale(-1));
+            if (Math.random() <= alpha) return Lambertian().scatter(inRay, point, element);
+            // if(element.normalToPoint(point).dot(inRay.dir) <= 0) return Ray(point, inRay.dir.scale(1));
+            // if(element.normalToPoint(point).dot(inRay.dir) > 0) return Ray(point, inRay.dir);
+            const v = point.sub(inRay.init);
+            let t = undefined
+            if (inRay.dir.x !== 0) t = v.x / inRay.dir.x;
+            if (inRay.dir.y !== 0) t = v.y / inRay.dir.y;
+            if (inRay.dir.z !== 0) t = v.z / inRay.dir.z;
+            if (t <= 0) return Ray(point, inRay.dir.scale(-1));
+            return Ray(inRay.trace(t + 1e-2), inRay.dir.scale(-1));
         }
     }
 }

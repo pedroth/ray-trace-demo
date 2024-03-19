@@ -26,8 +26,8 @@ function toggleFullScreen(elem) {
 }
 
 (() => {
-    const w = 640 / 2;
-    const h = 480 / 2;
+    const w = 640/2;
+    const h = 480/2;
     const canvas = Canvas.ofSize(w, h);
     let exposedCanvas = canvas.exposure();
     const camera = new Camera({
@@ -148,30 +148,31 @@ function toggleFullScreen(elem) {
             .positions(Vec3(2, 2, 2.9), Vec3(1, 2, 2.9), Vec3(1, 1, 2.9))
             .emissive(true)
             .build(),
-        // Point
-        //     .builder()
-        //     .radius(0.4)
-        //     .name("sphere")
-        //     .color(Color.ofRGB(1, 0, 1))
-        //     // .emissive(true)
-        //     .position(Vec3(1.5, 1.5, 1.5))
-        //     .build(),
+        Point
+            .builder()
+            .radius(0.5)
+            .name("sphere")
+            .color(Color.ofRGB(1, 0, 1))
+            .material(Metallic(0.25))
+            // .emissive(true)
+            .position(Vec3(1.5, 1.5, 1.5))
+            .build(),
         Point
             .builder()
             .radius(0.5)
             .name("metal-sphere")
             .color(Color.WHITE)
             .material(Metallic())
-            .position(Vec3(1.5, 1.5, 1.5))
+            .position(Vec3(1.5, 2.5, 1.5))
             .build(),
-        // Point
-        //     .builder()
-        //     .radius(0.5)
-        //     .name("alpha-sphere")
-        //     .color(Color.WHITE)
-        //     .material(Transparent(0.01))
-        //     .position(Vec3(2.5, 1.0, 1.5))
-        //     .build(),
+        Point
+            .builder()
+            .radius(0.5)
+            .name("alpha-sphere")
+            .color(Color.ofRGB(1,1,0))
+            .material(Transparent(0.25))
+            .position(Vec3(2.5, 1.0, 1.5))
+            .build(),
     )
 
 
