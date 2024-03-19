@@ -1,9 +1,10 @@
 import Box from "./Box.js";
 import Color from "./Color.js";
+import { Lambertian } from "./Material.js";
 import Vec, { Vec2, Vec3 } from "./Vector.js";
 
 class Point {
-    constructor({ name, position, color, texCoord, normal, radius, texture, emissive }) {
+    constructor({ name, position, color, texCoord, normal, radius, texture, emissive, material }) {
         this.name = name;
         this.color = color;
         this.radius = radius;
@@ -12,6 +13,7 @@ class Point {
         this.position = position;
         this.texCoord = texCoord;
         this.emissive = emissive;
+        this.material = material;
     }
 
     distanceToPoint(p) {
@@ -66,6 +68,7 @@ class PointBuilder {
         this._position = Vec3();
         this._texCoord = Vec2();
         this._emissive = false;
+        this._material = Lambertian();
     }
 
     name(name) {
@@ -113,6 +116,11 @@ class PointBuilder {
         return this;
     }
 
+    material(material) {
+        this._material = material;
+        return this;
+    }
+
     build() {
         const attrs = {
             name: this._name,
@@ -121,8 +129,8 @@ class PointBuilder {
             radius: this._radius,
             position: this._position,
             texCoord: this._texCoord,
-            emissive: this._emissive
-
+            emissive: this._emissive,
+            material: this._material
         }
         if (Object.values(attrs).some((x) => x === undefined)) {
             throw new Error("Point is incomplete");

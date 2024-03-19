@@ -6,6 +6,7 @@ import Triangle from "./Triangle.js";
 import Point from "./Point.js";
 import Vec, { Vec2, Vec3 } from "./Vector.js";
 import Ray from "./Ray.js";
+import { Metallic, Transparent } from "./Material.js";
 
 function toggleFullScreen(elem) {
     if (!document.fullscreenElement &&    // alternative standard method
@@ -116,7 +117,7 @@ function toggleFullScreen(elem) {
             .builder()
             .name("top-2")
             .colors(Color.WHITE, Color.WHITE, Color.WHITE)
-            .positions(Vec3(0, 0, 3), Vec3(0, 3, 3), Vec3(3, 3, 3) )
+            .positions(Vec3(0, 0, 3), Vec3(0, 3, 3), Vec3(3, 3, 3))
             .build(),
         Triangle
             .builder()
@@ -147,14 +148,30 @@ function toggleFullScreen(elem) {
             .positions(Vec3(2, 2, 2.9), Vec3(1, 2, 2.9), Vec3(1, 1, 2.9))
             .emissive(true)
             .build(),
+        // Point
+        //     .builder()
+        //     .radius(0.4)
+        //     .name("sphere")
+        //     .color(Color.ofRGB(1, 0, 1))
+        //     // .emissive(true)
+        //     .position(Vec3(1.5, 1.5, 1.5))
+        //     .build(),
         Point
             .builder()
             .radius(0.5)
-            .name("sphere")
+            .name("metal-sphere")
             .color(Color.WHITE)
-            // .emissive(true)
+            .material(Metallic())
             .position(Vec3(1.5, 1.5, 1.5))
             .build(),
+        // Point
+        //     .builder()
+        //     .radius(0.5)
+        //     .name("alpha-sphere")
+        //     .color(Color.WHITE)
+        //     .material(Transparent(0.01))
+        //     .position(Vec3(2.5, 1.0, 1.5))
+        //     .build(),
     )
 
 
@@ -195,8 +212,8 @@ function toggleFullScreen(elem) {
         const newT = new Date().getTime();
         const dt = (new Date().getTime() - oldT) * 1e-3;
         camera.sceneShot(scene).to(exposedCanvas);
-
-        // debugTrace(Vec3(1.5, 0.5, 5.5), undefined, 10);
+        // camera.rayShot((r) => Color.ofRGB(0.5 * (r.dir.x + 1), 0.5 * (r.dir.y + 1), 0.5 * (r.dir.z + 1))).to(canvas);
+        // debugTrace(Vec3(1.5, 1.5, 1), undefined, 10);
         setTimeout(() => play({
             oldT: newT,
             time: time + dt,

@@ -1,9 +1,10 @@
 import Box from "./Box.js";
 import Color from "./Color.js";
+import { Lambertian } from "./Material.js";
 import { Vec2, Vec3 } from "./Vector.js";
 
 export default class Triangle {
-    constructor({ name, positions, colors, texCoords, normals, texture, emissive }) {
+    constructor({ name, positions, colors, texCoords, normals, texture, emissive, material }) {
         this.name = name;
         this.colors = colors;
         this.normals = normals;
@@ -11,6 +12,7 @@ export default class Triangle {
         this.positions = positions;
         this.texCoords = texCoords;
         this.emissive = emissive;
+        this.material = material;
         this.edges = [];
         const n = this.positions.length;
         for (let i = 0; i < n; i++) {
@@ -20,6 +22,7 @@ export default class Triangle {
         const u = this.tangents[0];
         const v = this.tangents[1];
         this.faceNormal = u.cross(v).normalize();
+
 
     }
 
@@ -74,6 +77,7 @@ class TriangleBuilder {
         this._positions = indx.map(() => Vec3());
         this._texCoords = indx.map(() => Vec2());
         this._emissive = false;
+        this._material = Lambertian();
     }
 
     name(name) {
@@ -115,6 +119,11 @@ class TriangleBuilder {
         return this;
     }
 
+    material(material) {
+        this._material = material;
+        return this;
+    }
+
     build() {
         const attrs = {
             name: this._name,
@@ -122,7 +131,8 @@ class TriangleBuilder {
             normals: this._normals,
             positions: this._positions,
             texCoords: this._texCoords,
-            emissive: this._emissive
+            emissive: this._emissive,
+            material: this._material
         };
         if (Object.values(attrs).some((x) => x === undefined)) {
             throw new Error("Triangle is incomplete");
