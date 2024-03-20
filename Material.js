@@ -29,15 +29,13 @@ export function Transparent(alpha = 1) {
     return {
         scatter(inRay, point, element) {
             if (Math.random() <= alpha) return Lambertian().scatter(inRay, point, element);
-            // if(element.normalToPoint(point).dot(inRay.dir) <= 0) return Ray(point, inRay.dir.scale(1));
-            // if(element.normalToPoint(point).dot(inRay.dir) > 0) return Ray(point, inRay.dir);
             const v = point.sub(inRay.init);
             let t = undefined
             if (inRay.dir.x !== 0) t = v.x / inRay.dir.x;
             if (inRay.dir.y !== 0) t = v.y / inRay.dir.y;
             if (inRay.dir.z !== 0) t = v.z / inRay.dir.z;
-            if (t <= 0) return Ray(point, inRay.dir.scale(-1));
-            return Ray(inRay.trace(t + 1e-2), inRay.dir.scale(-1));
+            if (t <= 0) return Ray(point, inRay.dir);
+            return Ray(inRay.trace(t + 1e-2), inRay.dir);
         }
     }
 }

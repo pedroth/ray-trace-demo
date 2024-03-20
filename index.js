@@ -31,7 +31,7 @@ function toggleFullScreen(elem) {
     const canvas = Canvas.ofSize(w, h);
     let exposedCanvas = canvas.exposure();
     const camera = new Camera({
-        sphericalCoords: Vec3(7, 0, 0),
+        sphericalCoords: Vec3(3, 0, 0),
         focalPoint: Vec3(1.5, 1.5, 1.5)
     });
     // mouse handling
@@ -165,13 +165,21 @@ function toggleFullScreen(elem) {
             .material(Metallic())
             .position(Vec3(1.5, 2.5, 1.5))
             .build(),
-        Point
+        Triangle
             .builder()
-            .radius(0.5)
-            .name("alpha-sphere")
-            .color(Color.ofRGB(1,1,0))
-            .material(Transparent(0.25))
-            .position(Vec3(2.5, 1.0, 1.5))
+            // .radius(0.5)
+            .name("alpha-tri")
+            .colors(Color.ofRGB(1,1,0), Color.ofRGB(1,1,0), Color.ofRGB(1,1,0))
+            .material(Metallic())
+            .positions(Vec3(1, 0, 0), Vec3(0, 1, 0), Vec3(0, 0, 1))
+            .build(),
+        Triangle
+            .builder()
+            // .radius(0.5)
+            .name("alpha-tri-2")
+            .colors(Color.ofRGB(0,1,1), Color.ofRGB(0,1,1), Color.ofRGB(0,1,1))
+            .material(Transparent(0.0001))
+            .positions(Vec3(2, 0, 0), Vec3(0, 2, 0), Vec3(0, 0, 2))
             .build(),
     )
 
