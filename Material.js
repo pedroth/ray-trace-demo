@@ -29,19 +29,44 @@ export function Transparent(alpha = 1) {
     return {
         scatter(inRay, point, element) {
             if (Math.random() <= alpha) return Lambertian().scatter(inRay, point, element);
-            // let normal = element.normalToPoint(point);
-            // normal = inRay.dir.dot(normal) <= 0 ? normal : normal.scale(-1);
             const v = point.sub(inRay.init);
             let t = undefined
             if (inRay.dir.x !== 0) t = v.x / inRay.dir.x;
             if (inRay.dir.y !== 0) t = v.y / inRay.dir.y;
             if (inRay.dir.z !== 0) t = v.z / inRay.dir.z;
-            // if (t <= 0) return Ray(point, inRay.dir);
-            // return Ray(inRay.trace(t + 1e-2), inRay.dir);
-            // const dot = normal.dot(inRay.dir);
-            // return Ray(point, dot < 0 ? inRay.dir : inRay.dir.scale(-1));
-            // return Ray(point, inRay.dir);
-            return Ray(inRay.trace(t + 1e-2), inRay.dir)
+            return Ray(inRay.trace(t + 1e-2), inRay.dir);
+        }
+    }
+}
+
+export function DiElectric(indexOfRefraction = 1.0) {
+    return {
+        scatter(inRay, point, element) {
+            const p = point.sub(inRay.init);
+            let t = undefined
+            if (inRay.dir.x !== 0) t = p.x / inRay.dir.x;
+            if (inRay.dir.y !== 0) t = p.y / inRay.dir.y;
+            if (inRay.dir.z !== 0) t = p.z / inRay.dir.z;
+
+            const isInside = element.isInside(point);
+            const refractionRatio = isInside ? indexOfRefraction : 1 / indexOfRefraction;
+            const vIn = inRay.dir;
+            const n = element.normalToPoint(point);
+            const cosThetaIn = vIn.dot(n);
+            const sinThetaIn = Math.sqrt(1 - cosThetaIn * cosThetaIn);
+            const sinThetaOut = refractionRatio * sinThetaIn;
+            if (sinThetaOut > 1) {
+                // reflect
+                const vOut = vIn.sub(n.scale(2 * cosThetaIn));
+                return Ray(inRay.trace(t + 1e-2), vOut);
+            }
+            // refract
+            const cosThetaOut = Math.sqrt(1 - sinThetaOut * sinThetaOut)
+            const vp = n.scale(cosThetaIn);
+            const vo = vIn.sub(vp);
+            const vOut = n.scale(-cosThetaOut).add(vo.scale(sinThetaOut));
+
+            return Ray(inRay.trace(t + 1e-2), vOut);
         }
     }
 }
