@@ -21,7 +21,9 @@ class Point {
     }
 
     normalToPoint(p) {
-        return p.sub(this.position).normalize();
+        const r = p.sub(this.position);
+        const length = r.length();
+        return length > this.radius ? r.normalize() : r.scale(-1).normalize();
     }
 
     interceptWith(ray) {
@@ -43,7 +45,6 @@ class Point {
         return this.boundingBox;
     }
 
-
     sample() {
         let randomInSphere = undefined;
         while (true) {
@@ -53,6 +54,10 @@ class Point {
             break;
         }
         return randomInSphere.scale(this.radius).add(this.position);
+    }
+
+    isInside(p) {
+        return p.sub(this.position).length() < this.radius;
     }
 
     static builder() {
@@ -153,7 +158,8 @@ function sphereInterception(point, ray) {
     const sqrt = Math.sqrt(discriminant);
     const [t1, t2] = [(-b - sqrt) / 2, (-b + sqrt) / 2];
     const t = Math.min(t1, t2);
-    if (t1 * t2 < 0) return t;
+    const tM = Math.max(t1, t2);
+    if (t1 * t2 < 0) return tM;
     return t1 >= 0 && t2 >= 0 ? t : undefined;
 }
 

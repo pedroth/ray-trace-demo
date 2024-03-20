@@ -26,8 +26,8 @@ function toggleFullScreen(elem) {
 }
 
 (() => {
-    const w = 640/2;
-    const h = 480/2;
+    const w = 640 / 2;
+    const h = 480 / 2;
     const canvas = Canvas.ofSize(w, h);
     let exposedCanvas = canvas.exposure();
     const camera = new Camera({
@@ -181,6 +181,14 @@ function toggleFullScreen(elem) {
             .material(Transparent(0.0001))
             .positions(Vec3(2, 0, 0), Vec3(0, 2, 0), Vec3(0, 0, 2))
             .build(),
+        Point
+            .builder()
+            .name("alpha-sphere")
+            .color(Color.ofRGB(1, 1, 0))
+            .position(Vec3(2, 1, 1.5))
+            .radius(0.5)
+            .material(Transparent(0))
+            .build()
     )
 
 

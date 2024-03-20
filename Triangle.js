@@ -31,8 +31,10 @@ export default class Triangle {
         return Number.MAX_VALUE;
     }
 
-    normalToPoint() {
-        return this.faceNormal;
+    normalToPoint(p) {
+        const r = p.sub(this.positions[0]);
+        const dot = this.faceNormal.dot(r);
+        return dot >= 0 ? this.faceNormal : this.faceNormal.scale(-1);
     }
 
     interceptWith(ray) {
@@ -60,6 +62,10 @@ export default class Triangle {
 
     sample() {
         return this.tangents[0].scale(Math.random()).add(this.tangents[1].scale(Math.random())).add(this.positions[0]);
+    }
+
+    isInside(p) {
+        return this.faceNormal.dot(p.sub(this.positions[0])) >= 0;
     }
 
     static builder() {
