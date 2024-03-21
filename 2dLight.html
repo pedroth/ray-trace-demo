@@ -308,12 +308,12 @@
     const play = async ({ time, oldT }) => {
         const newT = new Date().getTime();
         const dt = (new Date().getTime() - oldT) * 1e-3;
-        // exposedCanvas
-        //     .map((x, y) => {
-        //         const px = scale * (2 * (x - center.x) / w - 1);
-        //         const py = scale * (2 * (y - center.y) / h - 1);
-        //         return trace(Vec2(px, py), undefined, 10);
-        //     })
+        exposedCanvas
+            .map((x, y) => {
+                const px = scale * (2 * (x - center.x) / w - 1);
+                const py = scale * (2 * (y - center.y) / h - 1);
+                return trace(Vec2(px, py), undefined, 10);
+            })
         // exposedCanvas
         //     .map((x, y) => {
         //         const px = scale * (2 * (x - center.x) / w - 1);
@@ -349,15 +349,15 @@
         //         }
         //         return c.scale(1 / nn).toGamma(0.0001);
         //     })
-        exposedCanvas.map((x, y) => Color.BLACK);
-        debugTrace(
-            Vec2(
-                scale * (2 * ((pointer.x - center.x) / w) - 1),
-                scale * (2 * ((pointer.y - center.y) / h) - 1),
-            ),
-            undefined,
-            1
-        )
+        // exposedCanvas.map((x, y) => Color.BLACK);
+        // debugTrace(
+        //     Vec2(
+        //         scale * (2 * ((pointer.x - center.x) / w) - 1),
+        //         scale * (2 * ((pointer.y - center.y) / h) - 1),
+        //     ),
+        //     undefined,
+        //     1
+        // )
         // scene[0].position = Vec2(Math.cos(time), Math.sin(time));
         setTimeout(() => play({
             oldT: newT,
@@ -389,7 +389,12 @@
     canvasDom.addEventListener("click", () => {
         toggleFullScreen(canvasDom);
     })
-    document.body.appendChild(canvas.DOM);
+
+    const container = document.createElement("div");
+    container.setAttribute("style", "display: flex; flex-grow: 1; margin: auto");
+    canvasDom.setAttribute("style", "flex-grow: 0.5")
+    container.appendChild(canvasDom);
+    document.body.appendChild(container);
 </script>
 
 </html>

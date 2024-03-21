@@ -51,20 +51,20 @@ export function DiElectric(indexOfRefraction = 1.0) {
             const isInside = element.isInside(point);
             const refractionRatio = isInside ? indexOfRefraction : 1 / indexOfRefraction;
             const vIn = inRay.dir;
-            const n = element.normalToPoint(point);
-            const cosThetaIn = vIn.dot(n);
+            const n = element.normalToPoint(point).scale(-1);
+            const cosThetaIn = Math.min(1, vIn.dot(n));
             const sinThetaIn = Math.sqrt(1 - cosThetaIn * cosThetaIn);
             const sinThetaOut = refractionRatio * sinThetaIn;
             if (sinThetaOut > 1) {
                 // reflect
-                const vOut = vIn.sub(n.scale(2 * cosThetaIn));
+                const vOut = vIn.sub(n.scale(-2 * cosThetaIn));
                 return Ray(inRay.trace(t + 1e-2), vOut);
             }
             // refract
             const cosThetaOut = Math.sqrt(1 - sinThetaOut * sinThetaOut)
             const vp = n.scale(cosThetaIn);
-            const vo = vIn.sub(vp);
-            const vOut = n.scale(-cosThetaOut).add(vo.scale(sinThetaOut));
+            const vo = vIn.sub(vp).normalize();
+            const vOut = n.scale(cosThetaOut).add(vo.scale(sinThetaOut));
 
             return Ray(inRay.trace(t + 1e-2), vOut);
         }

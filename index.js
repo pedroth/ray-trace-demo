@@ -154,8 +154,7 @@ function toggleFullScreen(elem) {
         //     .name("sphere")
         //     .color(Color.ofRGB(1, 0, 1))
         //     .material(Metallic(0.25))
-        //     // .emissive(true)
-        //     .position(Vec3(1.5, 1.5, 1.5))
+        //     .position(Vec3(1.5, 0.5, 1.5))
         //     .build(),
         // Point
         //     .builder()
@@ -169,9 +168,9 @@ function toggleFullScreen(elem) {
             .builder()
             .radius(0.5)
             .name("glass-sphere")
-            .color(Color.ofRGB(0, 1, 1))
-            .material(DiElectric(1.1))
-            .position(Vec3(1.5, 1.5, 1.5))
+            .color(Color.ofRGB(1, 1, 1))
+            .material(DiElectric(2))
+            .position(Vec3(2.5, 1.5, 1.5))
             .build(),
         // Triangle
         //     .builder()
@@ -183,11 +182,10 @@ function toggleFullScreen(elem) {
         //     .build(),
         // Triangle
         //     .builder()
-        //     // .radius(0.5)
         //     .name("alpha-tri-2")
-        //     .colors(Color.ofRGB(0,1,1), Color.ofRGB(0,1,1), Color.ofRGB(0,1,1))
-        //     .material(Transparent(0.0001))
-        //     .positions(Vec3(2, 0, 0), Vec3(0, 2, 0), Vec3(0, 0, 2))
+        //     .colors(Color.ofRGB(0, 1, 1), Color.ofRGB(0, 1, 1), Color.ofRGB(0, 1, 1))
+        //     .material(DiElectric(2))
+        //     .positions(Vec3(0, 2, 0), Vec3(1, 3, 0), Vec3(0, 3, 1))
         //     .build(),
         // Point
         //     .builder()
@@ -250,5 +248,10 @@ function toggleFullScreen(elem) {
     canvasDom.addEventListener("click", () => {
         toggleFullScreen(canvasDom);
     })
-    document.body.appendChild(canvas.DOM);
+
+    const container = document.createElement("div");
+    container.setAttribute("style", "display: flex; flex-grow: 1; margin: auto");
+    canvasDom.setAttribute("style", "flex-grow: 0.5")
+    container.appendChild(canvasDom);
+    document.body.appendChild(container);
 })()
