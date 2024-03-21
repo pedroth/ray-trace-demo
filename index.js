@@ -148,17 +148,17 @@ function toggleFullScreen(elem) {
             .positions(Vec3(2, 2, 2.9), Vec3(1, 2, 2.9), Vec3(1, 1, 2.9))
             .emissive(true)
             .build(),
+        Point
+            .builder()
+            .radius(0.5)
+            .name("sphere")
+            .color(Color.ofRGB(1, 0, 1))
+            .material(Metallic(0.25))
+            .position(Vec3(1.5, 1.5, 3))
+            .build(),
         // Point
         //     .builder()
-        //     .radius(0.5)
-        //     .name("sphere")
-        //     .color(Color.ofRGB(1, 0, 1))
-        //     .material(Metallic(0.25))
-        //     .position(Vec3(1.5, 0.5, 1.5))
-        //     .build(),
-        // Point
-        //     .builder()
-        //     .radius(0.5)
+        //     .radius(0.25)
         //     .name("metal-sphere")
         //     .color(Color.WHITE)
         //     .material(Metallic())
@@ -166,7 +166,7 @@ function toggleFullScreen(elem) {
         //     .build(),
         Point
             .builder()
-            .radius(0.5)
+            .radius(0.25)
             .name("glass-sphere")
             .color(Color.ofRGB(1, 1, 1))
             .material(DiElectric(2))
@@ -174,7 +174,6 @@ function toggleFullScreen(elem) {
             .build(),
         // Triangle
         //     .builder()
-        //     // .radius(0.5)
         //     .name("alpha-tri")
         //     .colors(Color.ofRGB(1,1,0), Color.ofRGB(1,1,0), Color.ofRGB(1,1,0))
         //     .material(Metallic())
@@ -183,17 +182,17 @@ function toggleFullScreen(elem) {
         // Triangle
         //     .builder()
         //     .name("alpha-tri-2")
-        //     .colors(Color.ofRGB(0, 1, 1), Color.ofRGB(0, 1, 1), Color.ofRGB(0, 1, 1))
+        //     .colors(Color.ofRGB(1, 1, 1), Color.ofRGB(1, 1, 1), Color.ofRGB(1, 1, 1))
         //     .material(DiElectric(2))
-        //     .positions(Vec3(0, 2, 0), Vec3(1, 3, 0), Vec3(0, 3, 1))
+        //     .positions(Vec3(3, 1, 1), Vec3(3, 2, 1), Vec3(3, 1.5, 2))
         //     .build(),
         // Point
         //     .builder()
+        //     .radius(0.25)
         //     .name("alpha-sphere")
         //     .color(Color.ofRGB(1, 1, 0))
         //     .position(Vec3(2, 1, 1.5))
-        //     .radius(0.5)
-        //     .material(Transparent(0.5))
+        //     .material(Transparent(0.25))
         //     .build()
     )
 

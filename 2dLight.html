@@ -29,29 +29,39 @@
     const h = 480 / 2;
     const canvas = Canvas.ofSize(w, h);
     let exposedCanvas = canvas.exposure();
-    const lightCache = (gridSpace) => {
+    const colorCache = (gridSpace) => {
         const probabilityMap = {};
-        let total = 1;
         const ans = {};
+        ans.total = 1;
         ans.hash = (p) => {
             const integerCoord = p.map(z => Math.floor(z / gridSpace));
             const h = (integerCoord.x * 92837111) ^ (integerCoord.y * 689287499);
             return Math.abs(h);
         }
-        ans.put = p => {
-            total++;
+        ans.put = (p, c) => {
+            ans.total = ans.total + 1;
             const h = ans.hash(p);
-            probabilityMap[h] = (probabilityMap[h] || 1) + 1;
+            if (!(h in probabilityMap)) {
+                probabilityMap[h] = { color: Color.BLACK, count: 1 };
+            }
+            const res = probabilityMap[h]
+            probabilityMap[h] = {
+                color: Color.ofRGB(
+                    c.red + (res.color.red - c.red) / res.count,
+                    c.green + (res.color.green - c.green) / res.count,
+                    c.blue + (res.color.blue - c.blue) / res.count
+                ),
+                count: res.count + 1
+            }
+            return ans;
         }
         ans.get = p => {
             const h = ans.hash(p);
-            const count = probabilityMap[h];
-            if (!count) return 1;
-            return Math.log(-probabilityMap[h] / total);
+            return probabilityMap[h];
         }
         return ans;
     }
-    let lightField = lightCache(1);
+    let colorField = colorCache(0.2);
 
     // mouse handling
     let mousedown = false;
@@ -199,8 +209,14 @@
     }
 
     function traceCache(x, normal, bounces) {
-        const prob = lightField.get(x);
-        if (Math.random() >= prob) return Color.BLACK;
+        const cachedValue = colorField.get(x);
+        if (
+            bounces < 3 &&
+            cachedValue &&
+            cachedValue.count > 1e1 &&
+            Math.random() < (cachedValue.count / colorField.total) ** 1e-1
+        ) return cachedValue.color;
+        
         if (bounces < 0) return Color.BLACK;
         const theta = 2 * Math.PI * Math.random();
         let v = Vec2(Math.cos(theta), Math.sin(theta));
@@ -212,11 +228,12 @@
         const [p, n, e] = hit;
         const color = e.color;
         if (e.emissive) return color;
-        const finalC = traceCache(p, n, bounces - 1);
+        let finalC = traceCache(p, n, bounces - 1);
+        finalC = finalC.mul(color);
         if (!finalC.equals(Color.BLACK)) {
-            lightField.put(x);
+            colorField.put(x, finalC);
         }
-        return finalC.mul(color);
+        return finalC;
     }
 
     function lightTrace(x, normal, bounces) {
