@@ -242,7 +242,6 @@ function toggleFullScreen(elem) {
         const newT = new Date().getTime();
         const dt = (new Date().getTime() - oldT) * 1e-3;
         camera.sceneShot(scene).to(exposedCanvas);
-        // camera.rayShot((r) => Color.ofRGB(0.5 * (r.dir.x + 1), 0.5 * (r.dir.y + 1), 0.5 * (r.dir.z + 1))).to(canvas);
         // debugTrace(Vec3(1.5, 1.5, 1), undefined, 10);
         setTimeout(() => play({
             oldT: newT,

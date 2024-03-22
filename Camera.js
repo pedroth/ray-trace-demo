@@ -122,11 +122,11 @@ export default class Camera {
         const epsilon = Vec.RANDOM(3).scale(variance);
         const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
         const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
-        // c = c.add(trace(r, scene, { bounces }));
-        c = c.add(rayTrace(r, scene, { bounces }));
+        c = c.add(trace(r, scene, { bounces }));
+        // c = c.add(rayTrace(r, scene, { bounces }));
         // c = c.add(trace(r, scene, { bounces }).add(rayTrace(r, scene, { bounces })).scale(0.01));
       }
-      return c.scale(1 / samplesPerPxl).toGamma(1e-32);
+      return c.scale(1 / samplesPerPxl).toGamma(0.5);
       // return c.scale(1 / samplesPerPxl);
     }
     return this.rayShot(lambda, params);
