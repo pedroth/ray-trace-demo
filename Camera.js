@@ -4,7 +4,7 @@ import Vec, { Vec2, Vec3 } from "./Vector.js";
 
 const PARAMS = {
   samplesPerPxl: 10,
-  bounces: 20,
+  bounces: 9,
   variance: 0.001
 };
 export default class Camera {
@@ -77,26 +77,6 @@ export default class Camera {
     }
   }
 
-  sceneShot(scene, params = PARAMS) {
-    const bounces = params.bounces;
-    const variance = params.variance;
-    const samplesPerPxl = params.samplesPerPxl;
-    const lambda = ray => {
-      let c = Color.BLACK;
-      for (let i = 0; i < samplesPerPxl; i++) {
-        const epsilon = Vec.RANDOM(3).scale(variance);
-        const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
-        const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
-        c = c.add(trace(r, scene, { bounces }));
-        // c = c.add(rayTrace(r, scene, { bounces }));
-        // c = c.add(trace(r, scene, { bounces }).add(rayTrace(r, scene, { bounces }))).scale(0.5);
-      }
-      return c.scale(1 / samplesPerPxl).toGamma(1e-32);
-      // return c.scale(1 / samplesPerPxl);
-    }
-    return this.rayShot(lambda, params);
-  }
-
   toCameraCoord(x) {
     let pointInCamCoord = x.sub(this.eye);
     pointInCamCoord = Vec3(
@@ -130,6 +110,27 @@ export default class Camera {
       })
     canvas.drawLine(intPoints[0], intPoints[1], () => color);
   }
+
+
+  sceneShot(scene, params = PARAMS) {
+    const bounces = params.bounces;
+    const variance = params.variance;
+    const samplesPerPxl = params.samplesPerPxl;
+    const lambda = ray => {
+      let c = Color.BLACK;
+      for (let i = 0; i < samplesPerPxl; i++) {
+        const epsilon = Vec.RANDOM(3).scale(variance);
+        const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
+        const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
+        // c = c.add(trace(r, scene, { bounces }));
+        c = c.add(rayTrace(r, scene, { bounces }));
+        // c = c.add(trace(r, scene, { bounces }).add(rayTrace(r, scene, { bounces })).scale(0.01));
+      }
+      return c.scale(1 / samplesPerPxl).toGamma(1e-32);
+      // return c.scale(1 / samplesPerPxl);
+    }
+    return this.rayShot(lambda, params);
+  }
 }
 
 function trace(ray, scene, options) {
@@ -147,7 +148,8 @@ function trace(ray, scene, options) {
     scene,
     { bounces: bounces - 1 }
   );
-  // finalC = finalC.scale(Math.max(0, r.dir.dot(e.normalToPoint(r.init))));
+  // const dot = Math.max(0, r.dir.dot(e.normalToPoint(r.init)));
+  // return color.scale(dot).mul(finalC);
   return color.mul(finalC);
 }
 
@@ -166,7 +168,7 @@ function rayTrace(ray, scene, options) {
     scene,
     { bounces: bounces - 1 }
   );
-  finalC = finalC.scale(Math.max(0, r.dir.dot(e.normalToPoint(r.init))));
+  // return color.scale(dot).mul(finalC);
   return color.mul(finalC);
 }
 
@@ -180,9 +182,11 @@ function colorFromLight(p, scene) {
     const hit = scene.interceptWith(Ray(p, v));
     if (!hit) continue;
     if (hit) {
-      const [, e] = hit;
+      const [p, e] = hit;
       const color = e.color ?? e.colors[0];
       if (e.emissive) {
+        const n = e.normalToPoint(p);
+        const dot = Math.max(0, v.dot(n));
         c = c.add(color);
       }
     }

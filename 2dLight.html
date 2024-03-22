@@ -216,7 +216,7 @@
             cachedValue.count > 1e1 &&
             Math.random() < (cachedValue.count / colorField.total) ** 1e-1
         ) return cachedValue.color;
-        
+
         if (bounces < 0) return Color.BLACK;
         const theta = 2 * Math.PI * Math.random();
         let v = Vec2(Math.cos(theta), Math.sin(theta));
@@ -325,24 +325,28 @@
     const play = async ({ time, oldT }) => {
         const newT = new Date().getTime();
         const dt = (new Date().getTime() - oldT) * 1e-3;
+        // default
         exposedCanvas
             .map((x, y) => {
                 const px = scale * (2 * (x - center.x) / w - 1);
                 const py = scale * (2 * (y - center.y) / h - 1);
                 return trace(Vec2(px, py), undefined, 10);
             })
+        // cached
         // exposedCanvas
         //     .map((x, y) => {
         //         const px = scale * (2 * (x - center.x) / w - 1);
         //         const py = scale * (2 * (y - center.y) / h - 1);
         //         return traceCache(Vec2(px, py), undefined, 10);
         //     })
+        // light trace
         // exposedCanvas
         //     .map((x, y) => {
         //         const px = scale * (2 * (x - center.x) / w - 1);
         //         const py = scale * (2 * (y - center.y) / h - 1);
         //         return lightTrace(Vec2(px, py), undefined, 1);
         //     })
+        // default /light combination
         // exposedCanvas
         //     .map((x, y) => {
         //         const px = scale * (2 * (x - center.x) / w - 1);
@@ -351,6 +355,7 @@
         //             .add(lightTrace(Vec2(px, py), undefined, 2).scale(0.25))
         //             .toGamma(0.1);
         //     })
+        // group aggregation
         // exposedCanvas
         //     .map((x, y) => {
         //         let c = Color.BLACK;
@@ -366,6 +371,7 @@
         //         }
         //         return c.scale(1 / nn).toGamma(0.0001);
         //     })
+        // debug
         // exposedCanvas.map((x, y) => Color.BLACK);
         // debugTrace(
         //     Vec2(
@@ -375,6 +381,7 @@
         //     undefined,
         //     1
         // )
+        // moving light
         // scene[0].position = Vec2(Math.cos(time), Math.sin(time));
         setTimeout(() => play({
             oldT: newT,

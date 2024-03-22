@@ -131,6 +131,14 @@ function toggleFullScreen(elem) {
             .colors(Color.WHITE, Color.WHITE, Color.WHITE)
             .positions(Vec3(0, 3, 3), Vec3(0, 0, 3), Vec3())
             .build(),
+        Triangle
+            .builder()
+            .name("angle")
+            .colors(Color.BLUE, Color.BLUE, Color.BLUE)
+            .material(Metallic(0.02))
+            .positions(Vec3(2, 1, 1), Vec3(1, 2, 1), Vec3(1, 1, 2))
+            .build(),
+
     )
     // add light and sphere
     scene.add(
@@ -148,14 +156,14 @@ function toggleFullScreen(elem) {
             .positions(Vec3(2, 2, 2.9), Vec3(1, 2, 2.9), Vec3(1, 1, 2.9))
             .emissive(true)
             .build(),
-        Point
-            .builder()
-            .radius(0.5)
-            .name("sphere")
-            .color(Color.ofRGB(1, 0, 1))
-            .material(Metallic(0.25))
-            .position(Vec3(1.5, 1.5, 3))
-            .build(),
+        // Point
+        //     .builder()
+        //     .radius(0.25)
+        //     .name("sphere")
+        //     .color(Color.ofRGB(1, 0, 1))
+        //     .material(Metallic(0.25))
+        //     .position(Vec3(0.5, 0.5, 1.5))
+        //     .build(),
         // Point
         //     .builder()
         //     .radius(0.25)
@@ -164,14 +172,14 @@ function toggleFullScreen(elem) {
         //     .material(Metallic())
         //     .position(Vec3(1.5, 2.5, 1.5))
         //     .build(),
-        Point
-            .builder()
-            .radius(0.25)
-            .name("glass-sphere")
-            .color(Color.ofRGB(1, 1, 1))
-            .material(DiElectric(2))
-            .position(Vec3(2.5, 1.5, 1.5))
-            .build(),
+        // Point
+        //     .builder()
+        //     .radius(0.25)
+        //     .name("glass-sphere")
+        //     .color(Color.ofRGB(1, 1, 1))
+        //     .material(DiElectric(2))
+        //     .position(Vec3(2.5, 1.5, 1.5))
+        //     .build(),
         // Triangle
         //     .builder()
         //     .name("alpha-tri")
@@ -190,8 +198,8 @@ function toggleFullScreen(elem) {
         //     .builder()
         //     .radius(0.25)
         //     .name("alpha-sphere")
-        //     .color(Color.ofRGB(1, 1, 0))
-        //     .position(Vec3(2, 1, 1.5))
+        //     .color(Color.ofRGB(0, 1, 1))
+        //     .position(Vec3(3, 1.5, 2))
         //     .material(Transparent(0.25))
         //     .build()
     )

@@ -38,18 +38,19 @@ export default class Triangle {
     }
 
     interceptWith(ray) {
+        const epsilon = 1e-9
         const v = ray.dir;
         const p = ray.init.sub(this.positions[0]);
         const n = this.faceNormal;
         const t = - n.dot(p) / n.dot(v);
-        if (t <= 1e-9) return;
+        if (t <= epsilon) return;
         const x = ray.trace(t);
         for (let i = 0; i < this.positions.length; i++) {
             const xi = this.positions[i];
             const u = x.sub(xi);
             const ni = n.cross(this.edges[i]).normalize();
             const dot = ni.dot(u);
-            if (dot < 0) return;
+            if (dot <= epsilon) return;
         }
         return [x, this];
     }
