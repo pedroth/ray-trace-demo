@@ -1,6 +1,6 @@
 import Box from "./Box.js";
 import Color from "./Color.js";
-import { Lambertian } from "./Material.js";
+import { Diffuse } from "./Material.js";
 import { Vec2, Vec3 } from "./Vector.js";
 
 export default class Triangle {
@@ -84,7 +84,7 @@ class TriangleBuilder {
         this._positions = indx.map(() => Vec3());
         this._texCoords = indx.map(() => Vec2());
         this._emissive = false;
-        this._material = Lambertian();
+        this._material = Diffuse();
     }
 
     name(name) {

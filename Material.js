@@ -1,7 +1,7 @@
 import Ray from "./Ray.js";
 import Vec from "./Vector.js";
 
-export function Lambertian() {
+export function Diffuse() {
     return {
         scatter(inRay, point, element) {
             let normal = element.normalToPoint(point);
@@ -28,7 +28,7 @@ export function Metallic(fuzz = 0) {
 export function Transparent(alpha = 1) {
     return {
         scatter(inRay, point, element) {
-            if (Math.random() <= alpha) return Lambertian().scatter(inRay, point, element);
+            if (Math.random() <= alpha) return Diffuse().scatter(inRay, point, element);
             const v = point.sub(inRay.init);
             let t = undefined
             if (inRay.dir.x !== 0) t = v.x / inRay.dir.x;
