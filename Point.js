@@ -65,8 +65,6 @@ class Point {
     }
 }
 
-
-
 class PointBuilder {
     constructor() {
         this._name;

@@ -52,7 +52,7 @@ export default class Canvas {
     return this.paint();
   }
 
-  exposure(time = 1e6) {
+  exposure(time = Number.MAX_VALUE) {
     let it = 1;
     return {
       width: this.width,

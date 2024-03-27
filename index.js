@@ -6,7 +6,7 @@ import Triangle from "./Triangle.js";
 import Point from "./Point.js";
 import Vec, { Vec2, Vec3 } from "./Vector.js";
 import Ray from "./Ray.js";
-import { DiElectric, Metallic, Transparent } from "./Material.js";
+import { DiElectric, Metallic, Alpha } from "./Material.js";
 
 function toggleFullScreen(elem) {
     if (!document.fullscreenElement &&    // alternative standard method
@@ -86,12 +86,14 @@ function toggleFullScreen(elem) {
         Triangle
             .builder()
             .name("right-1")
+            .material(Metallic())
             .colors(Color.GREEN, Color.GREEN, Color.GREEN)
             .positions(Vec3(0, 3, 0), Vec3(3, 3, 0), Vec3(3, 3, 3))
             .build(),
         Triangle
             .builder()
             .name("right-2")
+            .material(Metallic())
             .colors(Color.GREEN, Color.GREEN, Color.GREEN)
             .positions(Vec3(3, 3, 3), Vec3(0, 3, 3), Vec3(0, 3, 0))
             .build(),
@@ -135,8 +137,8 @@ function toggleFullScreen(elem) {
             .builder()
             .name("angle")
             .colors(Color.BLUE, Color.BLUE, Color.BLUE)
-            .material(Metallic(0.02))
-            .positions(Vec3(2, 1, 1), Vec3(1, 2, 1), Vec3(1, 1, 2))
+            .material(Metallic())
+            .positions(Vec3(2, 1, 1), Vec3(1, 2, 1.5), Vec3(1, 1, 1))
             .build(),
 
     )
@@ -161,8 +163,8 @@ function toggleFullScreen(elem) {
         //     .radius(0.25)
         //     .name("sphere")
         //     .color(Color.ofRGB(1, 0, 1))
-        //     .material(Metallic(0.25))
-        //     .position(Vec3(0.5, 0.5, 1.5))
+        //     .material(Alpha(0.1))
+        //     .position(Vec3(1.5, 0.5, 1.5))
         //     .build(),
         // Point
         //     .builder()
@@ -174,11 +176,11 @@ function toggleFullScreen(elem) {
         //     .build(),
         // Point
         //     .builder()
-        //     .radius(0.25)
+        //     .radius(0.5)
         //     .name("glass-sphere")
         //     .color(Color.ofRGB(1, 1, 1))
-        //     .material(DiElectric(2))
-        //     .position(Vec3(2.5, 1.5, 1.5))
+        //     .material(DiElectric(1.3))
+        //     .position(Vec3(1.0, 1.5, 1.0))
         //     .build(),
         // Triangle
         //     .builder()

@@ -1,3 +1,4 @@
+import { clamp } from "./Math.js";
 import Ray from "./Ray.js";
 import Vec from "./Vector.js";
 
@@ -25,7 +26,8 @@ export function Metallic(fuzz = 0) {
     }
 }
 
-export function Transparent(alpha = 1) {
+export function Alpha(alpha = 1) {
+    alpha = clamp()(alpha);
     return {
         scatter(inRay, point, element) {
             if (Math.random() <= alpha) return Diffuse().scatter(inRay, point, element);
