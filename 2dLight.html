@@ -106,7 +106,7 @@
             const d = element.distanceTo(p);
             t += d;
             if (d < epsilon) {
-                return p.add(dir.scale(-epsilon));
+                return [t, p.add(dir.scale(-epsilon))];
             }
             if (d > minT) {
                 return;
@@ -141,8 +141,8 @@
         }
 
         line.interceptWith = (init, dir) => {
-            const p = sdfIntercept(init, dir, line);
-            if (p) return [p, line.normal(p)];
+            const hit = sdfIntercept(init, dir, line);
+            if (hit) return [...hit, line.normal(hit[1])];
         }
         return line;
     }
@@ -167,8 +167,8 @@
 
 
         point.interceptWith = (init, dir) => {
-            const p = sdfIntercept(init, dir, point);
-            if (p) return [p, point.normal(p)];
+            const hit = sdfIntercept(init, dir, point);
+            if (hit) return [...hit, point.normal(hit[1])];
         }
         return point;
     }
@@ -180,10 +180,10 @@
             const e = scene[i];
             const hit = e.interceptWith(init, dir);
             if (hit) {
-                const [p, n] = hit;
+                const [t, p, n] = hit;
                 const length = p.sub(init).length();
-                if (length < minDist) {
-                    minDist = length;
+                if (t < minDist) {
+                    minDist = t;
                     closest = [p, n, e];
                 }
             }
