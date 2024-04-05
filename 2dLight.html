@@ -181,7 +181,6 @@
             const hit = e.interceptWith(init, dir);
             if (hit) {
                 const [t, p, n] = hit;
-                const length = p.sub(init).length();
                 if (t < minDist) {
                     minDist = t;
                     closest = [p, n, e];
