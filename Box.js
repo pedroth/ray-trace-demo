@@ -32,24 +32,22 @@ export default class Box {
     intersection = this.sub;
 
     interceptWith(ray) {
-        const maxIte = 100;
-        const epsilon = 1e-6;
-        let p = ray.init;
-        let t = this.distanceToPoint(p);
-        let minT = t;
-        for (let i = 0; i < maxIte; i++) {
-            p = ray.trace(t);
-            const d = this.distanceToPoint(p);
-            t += d;
-            if (d < epsilon) {
-                return p;
-            }
-            if (d > 2 * minT) {
-                break;
-            }
-            minT = d;
+        const epsilon = 1e-3;
+        let tmin = -Number.MAX_VALUE;
+        let tmax = Number.MAX_VALUE;
+        const minArray = this.min.toArray();
+        const maxArray = this.max.toArray();
+        const rInit = ray.init.toArray();
+        const dirInv = ray.dirInv.toArray();
+        const dim = this.min?.dim;
+        for (let i = 0; i < dim; ++i) {
+            let t1 = (minArray[i] - rInit[i]) * dirInv[i];
+            let t2 = (maxArray[i] - rInit[i]) * dirInv[i];
+
+            tmin = Math.max(tmin, Math.min(t1, t2));
+            tmax = Math.min(tmax, Math.max(t1, t2));
         }
-        return;
+        return tmax >= Math.max(tmin, 0) ? [tmin - epsilon, ray.trace(tmin - epsilon), this] : undefined;
     }
 
     scale(r) {

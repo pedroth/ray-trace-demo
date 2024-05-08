@@ -3,10 +3,10 @@ import Ray from "./Ray.js";
 import Vec, { Vec2, Vec3 } from "./Vector.js";
 
 const PARAMS = {
-  samplesPerPxl: 10,
-  bounces: 17,
+  samplesPerPxl: 3,
+  bounces: 10,
   variance: 0.001,
-  gamma: 1e-3
+  gamma: 1e-6
 };
 export default class Camera {
   constructor(props = {
@@ -180,8 +180,9 @@ function colorFromLight(p, scene) {
   for (let i = 0; i < emissiveElements.length; i++) {
     const light = emissiveElements[i];
     const lightP = light.sample();
-    const v = lightP.sub(p).normalize();
-    const hit = scene.interceptWith(Ray(p, v));
+    const v = lightP.sub(p);
+    const dir = v.normalize();
+    const hit = scene.interceptWith(Ray(p, dir));
     if (!hit) continue;
     if (hit) {
       const [p, e] = hit;
@@ -189,7 +190,7 @@ function colorFromLight(p, scene) {
       if (e.emissive) {
         const n = e.normalToPoint(p);
         const dot = Math.max(0, v.dot(n));
-        c = c.add(color);
+        c = c.add(color.scale(dot/v.dot(v)));
       }
     }
   }

@@ -86,14 +86,12 @@ function toggleFullScreen(elem) {
         Triangle
             .builder()
             .name("right-1")
-            .material(Metallic())
             .colors(Color.GREEN, Color.GREEN, Color.GREEN)
             .positions(Vec3(0, 3, 0), Vec3(3, 3, 0), Vec3(3, 3, 3))
             .build(),
         Triangle
             .builder()
             .name("right-2")
-            .material(Metallic())
             .colors(Color.GREEN, Color.GREEN, Color.GREEN)
             .positions(Vec3(3, 3, 3), Vec3(0, 3, 3), Vec3(0, 3, 0))
             .build(),
@@ -137,8 +135,8 @@ function toggleFullScreen(elem) {
             .builder()
             .name("angle")
             .colors(Color.BLUE, Color.BLUE, Color.BLUE)
-            .material(Metallic())
-            .positions(Vec3(2, 1, 1), Vec3(1, 2, 1.5), Vec3(1, 1, 1))
+            // .material(Metallic())
+            .positions(Vec3(2, 1, 1), Vec3(1, 2, 1), Vec3(1, 1, 2))
             .build(),
 
     )
@@ -256,7 +254,6 @@ function toggleFullScreen(elem) {
     canvasDom.addEventListener("click", () => {
         toggleFullScreen(canvasDom);
     })
-
     const container = document.createElement("div");
     container.setAttribute("style", "display: flex; flex-grow: 1; margin: auto");
     canvasDom.setAttribute("style", "flex-grow: 0.5")
