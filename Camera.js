@@ -3,10 +3,10 @@ import Ray from "./Ray.js";
 import Vec, { Vec2, Vec3 } from "./Vector.js";
 
 const PARAMS = {
-  samplesPerPxl: 3,
+  samplesPerPxl: 1,
   bounces: 10,
   variance: 0.001,
-  gamma: 1e-6
+  gamma: 1 / 2.2
 };
 export default class Camera {
   constructor(props = {
@@ -54,6 +54,8 @@ export default class Camera {
   }
 
   rayShot(lambdaWithRays, params) {
+    let { variance } = params;
+    variance = variance ?? 0.001;
     return {
       to: canvas => {
         const w = canvas.width;
@@ -61,9 +63,9 @@ export default class Camera {
         const ans = canvas.map(
           (x, y) => {
             const dirInLocal = [
-              (x / w - 0.5),
-              (y / h - 0.5),
-              1
+              ((x + Math.random() * variance - 0.5) / w - 0.5),
+              ((y + Math.random() * variance - 0.5) / h - 0.5),
+              this.distanceToPlane
             ]
             const dir = Vec3(
               this.basis[0].x * dirInLocal[0] + this.basis[1].x * dirInLocal[1] + this.basis[2].x * dirInLocal[2],
@@ -115,21 +117,17 @@ export default class Camera {
 
   sceneShot(scene, params = PARAMS) {
     const bounces = params.bounces;
-    const variance = params.variance;
     const samplesPerPxl = params.samplesPerPxl;
     const gamma = params.gamma;
+    const invSamples = 1 / samplesPerPxl;
     const lambda = ray => {
       let c = Color.BLACK;
       for (let i = 0; i < samplesPerPxl; i++) {
-        const epsilon = Vec.RANDOM(3).scale(variance);
-        const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
-        const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
-        c = c.add(trace(r, scene, { bounces }));
+        c = c.add(trace(ray, scene, { bounces }));
         // c = c.add(rayTrace(r, scene, { bounces }));
         // c = c.add(trace(r, scene, { bounces }).add(rayTrace(r, scene, { bounces })).scale(0.01));
       }
-      return c.scale(1 / samplesPerPxl).toGamma(gamma);
-      // return c.scale(1 / samplesPerPxl);
+      return c.scale(invSamples).toGamma(gamma);
     }
     return this.rayShot(lambda, params);
   }
@@ -152,6 +150,7 @@ function trace(ray, scene, options) {
   );
   // const dot = Math.max(0, r.dir.dot(e.normalToPoint(r.init)));
   // return color.scale(dot).mul(finalC);
+  // return color.mul(finalC);
   return color.mul(finalC);
 }
 
@@ -190,7 +189,7 @@ function colorFromLight(p, scene) {
       if (e.emissive) {
         const n = e.normalToPoint(p);
         const dot = Math.max(0, v.dot(n));
-        c = c.add(color.scale(dot/v.dot(v)));
+        c = c.add(color.scale(dot / v.dot(v)));
       }
     }
   }

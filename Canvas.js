@@ -1,4 +1,5 @@
 import { MAX_8BIT } from "./Constants.js";
+import { clamp } from "./Math.js";
 
 export default class Canvas {
 
