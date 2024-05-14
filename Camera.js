@@ -54,8 +54,6 @@ export default class Camera {
   }
 
   rayShot(lambdaWithRays, params) {
-    let { variance } = params;
-    variance = variance ?? 0.001;
     return {
       to: canvas => {
         const w = canvas.width;
@@ -63,8 +61,8 @@ export default class Camera {
         const ans = canvas.map(
           (x, y) => {
             const dirInLocal = [
-              ((x + Math.random() * variance - 0.5) / w - 0.5),
-              ((y + Math.random() * variance - 0.5) / h - 0.5),
+              (x / w - 0.5),
+              (y / h - 0.5),
               this.distanceToPlane
             ]
             const dir = Vec3(
@@ -118,14 +116,18 @@ export default class Camera {
   sceneShot(scene, params = PARAMS) {
     const bounces = params.bounces;
     const samplesPerPxl = params.samplesPerPxl;
+    const variance = params.variance ?? 0.01;
     const gamma = params.gamma;
-    const invSamples = 1 / samplesPerPxl;
+    const invSamples = (bounces / samplesPerPxl);
     const lambda = ray => {
       let c = Color.BLACK;
       for (let i = 0; i < samplesPerPxl; i++) {
-        c = c.add(trace(ray, scene, { bounces }));
+        const epsilon = Vec.RANDOM(3).scale(variance);
+        const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
+        const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
+        c = c.add(trace(r, scene, { bounces }));
         // c = c.add(rayTrace(r, scene, { bounces }));
-        // c = c.add(trace(r, scene, { bounces }).add(rayTrace(r, scene, { bounces })).scale(0.01));
+        // c = c.add(trace(r, scene, { bounces }).add(rayTrace(r, scene, { bounces }).scale(0.1)));
       }
       return c.scale(invSamples).toGamma(gamma);
     }
