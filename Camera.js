@@ -3,9 +3,9 @@ import Ray from "./Ray.js";
 import Vec, { Vec2, Vec3 } from "./Vector.js";
 
 const PARAMS = {
-  samplesPerPxl: 1,
-  bounces: 10,
-  variance: 0.001,
+  samplesPerPxl: 2,
+  bounces: 2,
+  variance: 0.01,
   gamma: 1 / 2.2
 };
 export default class Camera {
@@ -53,7 +53,7 @@ export default class Camera {
     return this;
   }
 
-  rayShot(lambdaWithRays, params) {
+  rayMap(lambdaWithRays, params) {
     return {
       to: canvas => {
         const w = canvas.width;
@@ -116,9 +116,9 @@ export default class Camera {
   sceneShot(scene, params = PARAMS) {
     const bounces = params.bounces;
     const samplesPerPxl = params.samplesPerPxl;
-    const variance = params.variance ?? 0.01;
+    const variance = params.variance;
     const gamma = params.gamma;
-    const invSamples = (bounces / samplesPerPxl);
+    const invSamples = (bounces || 1) / samplesPerPxl;
     const lambda = ray => {
       let c = Color.BLACK;
       for (let i = 0; i < samplesPerPxl; i++) {
@@ -127,11 +127,11 @@ export default class Camera {
         const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
         c = c.add(trace(r, scene, { bounces }));
         // c = c.add(rayTrace(r, scene, { bounces }));
-        // c = c.add(trace(r, scene, { bounces }).add(rayTrace(r, scene, { bounces }).scale(0.1)));
+        // c = c.add(trace(r, scene, { bounces }).add(rayTrace(r, scene, { bounces })));
       }
       return c.scale(invSamples).toGamma(gamma);
     }
-    return this.rayShot(lambda, params);
+    return this.rayMap(lambda, params);
   }
 }
 
@@ -142,7 +142,6 @@ function trace(ray, scene, options) {
   if (!interception) return Color.BLACK;
   const [p, e] = interception;
   const color = e.color ?? e.colors[0];
-  if (e.emissive) return color;
   const mat = e.material;
   let r = mat.scatter(ray, p, e);
   let finalC = trace(
@@ -151,9 +150,8 @@ function trace(ray, scene, options) {
     { bounces: bounces - 1 }
   );
   // const dot = Math.max(0, r.dir.dot(e.normalToPoint(r.init)));
-  // return color.scale(dot).mul(finalC);
-  // return color.mul(finalC);
-  return color.mul(finalC);
+  // return e.emissive ? color.scale(dot).add(color.mul(finalC)) : color.mul(finalC);
+  return e.emissive ? color.add(color.mul(finalC)) : color.mul(finalC);
 }
 
 function rayTrace(ray, scene, options) {
@@ -163,7 +161,6 @@ function rayTrace(ray, scene, options) {
   if (!interception) return Color.BLACK;
   const [p, e] = interception;
   const color = e.color ?? e.colors[0];
-  if (e.emissive) return color;
   const mat = e.material;
   let r = mat.scatter(ray, p, e);
   let finalC = rayTrace(
@@ -171,8 +168,7 @@ function rayTrace(ray, scene, options) {
     scene,
     { bounces: bounces - 1 }
   );
-  // return color.scale(dot).mul(finalC);
-  return color.mul(finalC);
+  return e.emissive ? color.add(color.mul(finalC)) : color.mul(finalC);
 }
 
 function colorFromLight(p, scene) {

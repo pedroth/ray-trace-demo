@@ -131,13 +131,6 @@ function toggleFullScreen(elem) {
             .colors(Color.WHITE, Color.WHITE, Color.WHITE)
             .positions(Vec3(0, 3, 3), Vec3(0, 0, 3), Vec3())
             .build(),
-        Triangle
-            .builder()
-            .name("angle")
-            .colors(Color.BLUE, Color.BLUE, Color.BLUE)
-            // .material(Metallic())
-            .positions(Vec3(2, 1, 1), Vec3(1, 2, 1), Vec3(1, 1, 2))
-            .build(),
 
     )
     // add light and sphere
@@ -164,14 +157,14 @@ function toggleFullScreen(elem) {
         //     .material(Alpha(0.1))
         //     .position(Vec3(1.5, 0.5, 1.5))
         //     .build(),
-        // Point
-        //     .builder()
-        //     .radius(0.25)
-        //     .name("metal-sphere")
-        //     .color(Color.WHITE)
-        //     .material(Metallic())
-        //     .position(Vec3(1.5, 2.5, 1.5))
-        //     .build(),
+        Point
+            .builder()
+            .radius(0.25)
+            .name("metal-sphere")
+            .color(Color.RED)
+            // .emissive(true)
+            .position(Vec3(1.5, 1.5, 1.0))
+            .build(),
         // Point
         //     .builder()
         //     .radius(0.5)
