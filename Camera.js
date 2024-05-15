@@ -3,8 +3,8 @@ import Ray from "./Ray.js";
 import Vec, { Vec2, Vec3 } from "./Vector.js";
 
 const PARAMS = {
-  samplesPerPxl: 2,
-  bounces: 2,
+  samplesPerPxl: 5,
+  bounces: 20,
   variance: 0.01,
   gamma: 1 / 2.2
 };
