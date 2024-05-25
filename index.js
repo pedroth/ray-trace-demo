@@ -197,8 +197,6 @@ function toggleFullScreen(elem) {
         //     .build()
     )
 
-
-
     function debugTrace(p, n, bounces) {
         if (bounces <= 0) return;
         function scatter() {
@@ -234,8 +232,10 @@ function toggleFullScreen(elem) {
     const play = async ({ time, oldT }) => {
         const newT = new Date().getTime();
         const dt = (new Date().getTime() - oldT) * 1e-3;
-        camera.sceneShot(scene).to(exposedCanvas);
+        // camera.sceneShot(scene).to(exposedCanvas);
         // debugTrace(Vec3(1.5, 1.5, 1), undefined, 10);
+        camera.squareShot(scene).to(exposedCanvas);
+        console.log("time:", time);
         setTimeout(() => play({
             oldT: newT,
             time: time + dt,

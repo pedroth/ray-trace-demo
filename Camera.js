@@ -3,11 +3,12 @@ import Ray from "./Ray.js";
 import Vec, { Vec2, Vec3 } from "./Vector.js";
 
 const PARAMS = {
-  samplesPerPxl: 5,
+  samplesPerPxl: 1,
   bounces: 20,
   variance: 0.01,
   gamma: 1 / 2.2
 };
+
 export default class Camera {
   constructor(props = {
     sphericalCoords: Vec3(5, 0, 0),
@@ -112,7 +113,6 @@ export default class Camera {
     canvas.drawLine(intPoints[0], intPoints[1], () => color);
   }
 
-
   sceneShot(scene, params = PARAMS) {
     const bounces = params.bounces;
     const samplesPerPxl = params.samplesPerPxl;
@@ -133,7 +133,51 @@ export default class Camera {
     }
     return this.rayMap(lambda, params);
   }
+
+  squareShot(scene, params = PARAMS) {
+    const BUDGET = 10000;
+    return {
+      to: canvas => {
+        // params
+        const bounces = params.bounces;
+        const variance = params.variance;
+        // canvas 
+        const w = canvas.width;
+        const h = canvas.height;
+        let side = Math.sqrt(w * h / BUDGET);
+        for (let i = 0; i < BUDGET; i++) {
+          const xp = Math.random();
+          const yp = Math.random();
+          const dirInLocal = [
+            (xp - 0.5),
+            (yp - 0.5),
+            this.distanceToPlane
+          ]
+          const dir = Vec3(
+            this.basis[0].x * dirInLocal[0] + this.basis[1].x * dirInLocal[1] + this.basis[2].x * dirInLocal[2],
+            this.basis[0].y * dirInLocal[0] + this.basis[1].y * dirInLocal[1] + this.basis[2].y * dirInLocal[2],
+            this.basis[0].z * dirInLocal[0] + this.basis[1].z * dirInLocal[1] + this.basis[2].z * dirInLocal[2]
+          )
+            .normalize();
+          const ray = Ray(this.eye, dir);
+          const epsilon = Vec.RANDOM(3).scale(variance);
+          const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
+          const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
+          const c = trace(r, scene, { bounces });
+          canvas.drawSquare(
+            Vec2(xp * w - side, yp * h - side),
+            Vec2(xp * w + side, yp * h + side),
+            () => c
+          );
+          // canvas.setPxl(xp * w, yp * h, c);
+        }
+        canvas.paint();
+        return canvas;
+      }
+    }
+  }
 }
+
 
 function trace(ray, scene, options) {
   const { bounces } = options;
@@ -149,9 +193,9 @@ function trace(ray, scene, options) {
     scene,
     { bounces: bounces - 1 }
   );
-  // const dot = Math.max(0, r.dir.dot(e.normalToPoint(r.init)));
-  // return e.emissive ? color.scale(dot).add(color.mul(finalC)) : color.mul(finalC);
-  return e.emissive ? color.add(color.mul(finalC)) : color.mul(finalC);
+  const dot = Math.max(0, r.dir.dot(e.normalToPoint(r.init)));
+  return e.emissive ? color.scale(dot).add(color.mul(finalC)) : color.mul(finalC);
+  // return e.emissive ? color.add(color.mul(finalC)) : color.mul(finalC);
 }
 
 function rayTrace(ray, scene, options) {

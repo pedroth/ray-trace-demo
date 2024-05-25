@@ -1,5 +1,4 @@
 import { MAX_8BIT } from "./Constants.js";
-import { clamp } from "./Math.js";
 
 export default class Canvas {
 
@@ -55,30 +54,59 @@ export default class Canvas {
 
   exposure(time = Number.MAX_VALUE) {
     let it = 1;
-    return {
-      width: this.width,
-      height: this.height,
-      map: (lambda) => {
-        const n = this._image.length;
-        const w = this._width;
-        const h = this._height;
-        for (let k = 0; k < n; k += 4) {
-          const i = Math.floor(k / (4 * w));
-          const j = Math.floor((k / 4) % w);
-          const x = j;
-          const y = h - 1 - i;
-          const color = lambda(x, y);
-          if (!color) continue;
-          this._image[k] = this._image[k] + (color.red * MAX_8BIT - this._image[k]) / it;
-          this._image[k + 1] = this._image[k + 1] + (color.green * MAX_8BIT - this._image[k + 1]) / it;
-          this._image[k + 2] = this._image[k + 2] + (color.blue * MAX_8BIT - this._image[k + 2]) / it;
-          this._image[k + 3] = MAX_8BIT;
-        }
-        if (it < time) it++
-        return this.paint();
-      },
-      drawLine: () => { }
+    const ans = {};
+    for (let key of Object.getOwnPropertyNames(Object.getPrototypeOf(this))) {
+      const descriptor = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(this), key);
+      if (descriptor && typeof descriptor.value === 'function') {
+        ans[key] = descriptor.value.bind(this);
+      }
     }
+    ans.width = this.width;
+    ans.height = this.height;
+    ans.map = (lambda) => {
+      const n = this._image.length;
+      const w = this._width;
+      const h = this._height;
+      for (let k = 0; k < n; k += 4) {
+        const i = Math.floor(k / (4 * w));
+        const j = Math.floor((k / 4) % w);
+        const x = j;
+        const y = h - 1 - i;
+        const color = lambda(x, y);
+        if (!color) continue;
+        this._image[k] = this._image[k] + (color.red * MAX_8BIT - this._image[k]) / it;
+        this._image[k + 1] = this._image[k + 1] + (color.green * MAX_8BIT - this._image[k + 1]) / it;
+        this._image[k + 2] = this._image[k + 2] + (color.blue * MAX_8BIT - this._image[k + 2]) / it;
+        this._image[k + 3] = MAX_8BIT;
+      }
+      if (it < time) it++
+      return this.paint();
+    }
+
+    ans.drawSquare = (minP, maxP, shader) => {
+      for (let x = minP.x; x < maxP.x; x++) {
+        for (let y = minP.y; y < maxP.y; y++) {
+          ans.setPxl(x, y, shader(x, y));
+        }
+      }
+      return this;
+    }
+
+    ans.setPxl = (x, y, color) => {
+      const w = this._width;
+      const [i, j] = this.canvas2grid(x, y);
+      let index = 4 * (w * i + j);
+      this._image[index] = this._image[index] + (color.red * MAX_8BIT - this._image[index]) / it;
+      this._image[index + 1] = this._image[index + 1] + (color.green * MAX_8BIT - this._image[index + 1]) / it;
+      this._image[index + 2] = this._image[index + 2] + (color.blue * MAX_8BIT - this._image[index + 2]) / it;
+      this._image[index + 3] = MAX_8BIT;
+      return this;
+    }
+    ans.paint = () => {
+      if (it < time) it++
+      return this.paint();
+    }
+    return ans;
   }
 
   paint() {
@@ -133,6 +161,15 @@ export default class Canvas {
     return this;
   }
 
+  drawSquare(minP, maxP, shader) {
+    for (let x = minP.x; x < maxP.x; x++) {
+      for (let y = minP.y; y < maxP.y; y++) {
+        this.setPxl(x, y, shader(x, y));
+      }
+    }
+    return this;
+  }
+
   resize(width, height) {
     this._canvas.width = width;
     this._canvas.height = height;
@@ -157,6 +194,41 @@ export default class Canvas {
         setTimeout(() => re(responseBlob));
       })
     };
+  }
+
+  grid2canvas(i, j) {
+    const h = this.height;
+    const x = j;
+    const y = h - 1 - i;
+    return [x, y]
+  }
+
+  canvas2grid(x, y) {
+    const h = this._height;
+    const j = Math.floor(x);
+    const i = Math.floor(h - 1 - y);
+    return [i, j];
+  }
+
+  setPxl(x, y, color) {
+    const w = this._width;
+    const [i, j] = this.canvas2grid(x, y);
+    let index = 4 * (w * i + j);
+    this._image[index] = color.red * MAX_8BIT;
+    this._image[index + 1] = color.green * MAX_8BIT;
+    this._image[index + 2] = color.blue * MAX_8BIT;
+    this._image[index + 3] = MAX_8BIT;
+    return this;
+  }
+
+  getPxl(x, y) {
+    const w = this._width;
+    const h = this._height;
+    let [i, j] = this.canvas2grid(x, y);
+    i = mod(i, h);
+    j = mod(j, w);
+    let index = 4 * (w * i + j);
+    return Color.ofRGBRaw(this._image[index], this._image[index + 1], this._image[index + 2], this._image[index + 3]);
   }
 
   //========================================================================================
