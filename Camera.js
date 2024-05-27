@@ -125,8 +125,8 @@ export default class Camera {
         const epsilon = Vec.RANDOM(3).scale(variance);
         const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
         const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
-        c = c.add(trace(r, scene, { bounces }));
-        // c = c.add(rayTrace(r, scene, { bounces }));
+        // c = c.add(trace(r, scene, { bounces }))
+        c = c.add(rayTrace(r, scene, { bounces }));
         // c = c.add(trace(r, scene, { bounces }).add(rayTrace(r, scene, { bounces })));
       }
       return c.scale(invSamples).toGamma(gamma);
@@ -141,6 +141,7 @@ export default class Camera {
         // params
         const bounces = params.bounces;
         const variance = params.variance;
+        const alpha = params.alpha;
         // canvas 
         const w = canvas.width;
         const h = canvas.height;
@@ -163,7 +164,8 @@ export default class Camera {
           const epsilon = Vec.RANDOM(3).scale(variance);
           const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
           const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
-          const c = trace(r, scene, { bounces });
+          const c = trace(r, scene, { bounces }).toGamma(alpha);
+          // const c = rayTrace(r, scene, { bounces }).toGamma(alpha);
           canvas.drawSquare(
             Vec2(xp * w - side, yp * h - side),
             Vec2(xp * w + side, yp * h + side),
