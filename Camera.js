@@ -3,9 +3,9 @@ import Ray from "./Ray.js";
 import Vec, { Vec2, Vec3 } from "./Vector.js";
 
 const PARAMS = {
-  samplesPerPxl: 1,
-  bounces: 20,
-  variance: 0.01,
+  samplesPerPxl: 3,
+  bounces: 0,
+  variance: 0.001,
   gamma: 1 / 2.2
 };
 
@@ -164,8 +164,8 @@ export default class Camera {
           const epsilon = Vec.RANDOM(3).scale(variance);
           const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
           const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
-          const c = trace(r, scene, { bounces }).toGamma(alpha);
-          // const c = rayTrace(r, scene, { bounces }).toGamma(alpha);
+          // const c = trace(r, scene, { bounces }).toGamma(alpha);
+          const c = rayTrace(r, scene, { bounces }).toGamma(alpha);
           canvas.drawSquare(
             Vec2(xp * w - side, yp * h - side),
             Vec2(xp * w + side, yp * h + side),
@@ -237,5 +237,5 @@ function colorFromLight(p, scene) {
       }
     }
   }
-  return c.scale(1 / emissiveElements.length);
+  return c;
 }
