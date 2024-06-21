@@ -3,10 +3,10 @@ import Ray from "./Ray.js";
 import Vec, { Vec2, Vec3 } from "./Vector.js";
 
 const PARAMS = {
-  samplesPerPxl: 3,
-  bounces: 0,
+  samplesPerPxl: 1,
+  bounces: 20,
   variance: 0.001,
-  gamma: 1 / 2.2
+  gamma: 0.5
 };
 
 export default class Camera {
@@ -232,8 +232,8 @@ function colorFromLight(p, scene) {
       const color = e.color ?? e.colors[0];
       if (e.emissive) {
         const n = e.normalToPoint(p);
-        const dot = Math.max(0, v.dot(n));
-        c = c.add(color.scale(dot / v.dot(v)));
+        const dot = Math.max(0, dir.dot(n));
+        c = c.add(color.scale(dot));
       }
     }
   }

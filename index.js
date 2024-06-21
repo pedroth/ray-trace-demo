@@ -235,7 +235,6 @@ function toggleFullScreen(elem) {
         camera.sceneShot(scene).to(exposedCanvas);
         // camera.squareShot(scene).to(exposedCanvas);
         // debugTrace(Vec3(1.5, 1.5, 1), undefined, 10);
-        console.log("time:", time);
         setTimeout(() => play({
             oldT: newT,
             time: time + dt,
