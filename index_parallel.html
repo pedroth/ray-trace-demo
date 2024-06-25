@@ -218,6 +218,7 @@
         const play = async ({ time, oldT }) => {
             const newT = new Date().getTime();
             const dt = (new Date().getTime() - oldT) * 1e-3;
+            document.title = `Parallel, FPS: ${(Math.floor(1 / dt))}`;
             await camera.sceneShot(scene).to(exposedCanvas);
             setTimeout(() => play({
                 oldT: newT,

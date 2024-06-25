@@ -20,7 +20,7 @@ function main(inputs) {
     // the order does matter
     for (let y = startRow; y < endRow; y++) {
         for (let x = 0; x < width; x++) {
-            const color = rayTrace(rayGen(x, height - 1 - y), scene, params).toGamma(params.gamma);
+            const color = rayTrace(rayGen(x, height - 1 - y), scene, params);
             image[index++] = color.red;
             image[index++] = color.green;
             image[index++] = color.blue;
