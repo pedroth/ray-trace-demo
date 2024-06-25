@@ -2,7 +2,7 @@ import { Vec2, Vec3 } from "./Vector.js";
 
 const PARAMS = {
   samplesPerPxl: 1,
-  bounces: 10,
+  bounces: 1,
   variance: 0.001,
   gamma: 0.5
 };

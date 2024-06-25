@@ -4,7 +4,7 @@ import Vec, { Vec2, Vec3 } from "./Vector.js";
 
 const PARAMS = {
   samplesPerPxl: 1,
-  bounces: 10,
+  bounces: 1,
   variance: 0.001,
   gamma: 0.5
 };
@@ -160,8 +160,8 @@ export default class Camera {
         const epsilon = Vec.RANDOM(3).scale(variance);
         const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
         const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
-        // c = c.add(trace(r, scene, { bounces }))
-        c = c.add(rayTrace(r, scene, { bounces }));
+        c = c.add(trace(r, scene, { bounces }))
+        // c = c.add(rayTrace(r, scene, { bounces }));
         // c = c.add(trace(r, scene, { bounces }).add(rayTrace(r, scene, { bounces })));
       }
       return c.scale(invSamples).toGamma(gamma);
