@@ -61,7 +61,7 @@
         }
         return ans;
     }
-    let colorField = colorCache(0.2);
+    let colorField = colorCache(1);
 
     // mouse handling
     let mousedown = false;
@@ -320,66 +320,78 @@
     ]
 
 
+    const METHODS = {
+        default: () => {
+            exposedCanvas
+                .map((x, y) => {
+                    const px = scale * (2 * (x - center.x) / w - 1);
+                    const py = scale * (2 * (y - center.y) / h - 1);
+                    return trace(Vec2(px, py), undefined, 10);
+                })
+        },
+        cached: () => {
+            exposedCanvas
+                .map((x, y) => {
+                    const px = scale * (2 * (x - center.x) / w - 1);
+                    const py = scale * (2 * (y - center.y) / h - 1);
+                    return traceCache(Vec2(px, py), undefined, 10);
+                })
+        },
+        light_trace: () => {
+            exposedCanvas
+                .map((x, y) => {
+                    const px = scale * (2 * (x - center.x) / w - 1);
+                    const py = scale * (2 * (y - center.y) / h - 1);
+                    return lightTrace(Vec2(px, py), undefined, 1);
+                })
+        },
+        combo: () => {
+            exposedCanvas
+                .map((x, y) => {
+                    const px = scale * (2 * (x - center.x) / w - 1);
+                    const py = scale * (2 * (y - center.y) / h - 1);
+                    return trace(Vec2(px, py), undefined, 10).scale(0.75)
+                        .add(lightTrace(Vec2(px, py), undefined, 2).scale(0.25))
+                        .toGamma(0.1);
+                })
+        },
+        local_filter: () => {
+            exposedCanvas
+                .map((x, y) => {
+                    let c = Color.BLACK;
+                    let step = [-1, 0, 1];
+                    let n = step.length;
+                    let nn = n * n;
+                    for (let i = 0; i < nn; i++) {
+                        let j = step[Math.floor(i / n)];
+                        let k = step[i % n];
+                        const px = scale * (2 * ((x + j) - center.x) / w - 1);
+                        const py = scale * (2 * ((y + k) - center.y) / h - 1);
+                        c = c.add(trace(Vec2(px, py), undefined, 10));
+                    }
+                    return c.scale(1 / nn).toGamma(0.0001);
+                })
+        },
+        debug: () => {
+            exposedCanvas.map((x, y) => Color.BLACK);
+            debugTrace(
+                Vec2(
+                    scale * (2 * ((pointer.x - center.x) / w) - 1),
+                    scale * (2 * ((pointer.y - center.y) / h) - 1),
+                ),
+                undefined,
+                1
+            )
+        }
+
+    }
+
+
     // play
     const play = async ({ time, oldT }) => {
         const newT = new Date().getTime();
         const dt = (new Date().getTime() - oldT) * 1e-3;
-        // default
-        exposedCanvas
-            .map((x, y) => {
-                const px = scale * (2 * (x - center.x) / w - 1);
-                const py = scale * (2 * (y - center.y) / h - 1);
-                return trace(Vec2(px, py), undefined, 10);
-            })
-        // cached
-        // exposedCanvas
-        //     .map((x, y) => {
-        //         const px = scale * (2 * (x - center.x) / w - 1);
-        //         const py = scale * (2 * (y - center.y) / h - 1);
-        //         return traceCache(Vec2(px, py), undefined, 10);
-        //     })
-        // light trace
-        // exposedCanvas
-        //     .map((x, y) => {
-        //         const px = scale * (2 * (x - center.x) / w - 1);
-        //         const py = scale * (2 * (y - center.y) / h - 1);
-        //         return lightTrace(Vec2(px, py), undefined, 1);
-        //     })
-        // default /light combination
-        // exposedCanvas
-        //     .map((x, y) => {
-        //         const px = scale * (2 * (x - center.x) / w - 1);
-        //         const py = scale * (2 * (y - center.y) / h - 1);
-        //         return trace(Vec2(px, py), undefined, 10).scale(0.75)
-        //             .add(lightTrace(Vec2(px, py), undefined, 2).scale(0.25))
-        //             .toGamma(0.1);
-        //     })
-        // group aggregation
-        // exposedCanvas
-        //     .map((x, y) => {
-        //         let c = Color.BLACK;
-        //         let step = [-1, 0, 1];
-        //         let n = step.length;
-        //         let nn = n * n;
-        //         for (let i = 0; i < nn; i++) {
-        //             let j = step[Math.floor(i / n)];
-        //             let k = step[i % n];
-        //             const px = scale * (2 * ((x + j) - center.x) / w - 1);
-        //             const py = scale * (2 * ((y + k) - center.y) / h - 1);
-        //             c = c.add(trace(Vec2(px, py), undefined, 10));
-        //         }
-        //         return c.scale(1 / nn).toGamma(0.0001);
-        //     })
-        // debug
-        // exposedCanvas.map((x, y) => Color.BLACK);
-        // debugTrace(
-        //     Vec2(
-        //         scale * (2 * ((pointer.x - center.x) / w) - 1),
-        //         scale * (2 * ((pointer.y - center.y) / h) - 1),
-        //     ),
-        //     undefined,
-        //     1
-        // )
+        METHODS.combo();
         // moving light
         // scene[0].position = Vec2(Math.cos(time), Math.sin(time));
         setTimeout(() => play({
