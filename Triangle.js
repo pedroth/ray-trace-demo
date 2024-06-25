@@ -1,16 +1,13 @@
 import Box from "./Box.js";
 import Color from "./Color.js";
 import { Diffuse } from "./Material.js";
-import { Vec2, Vec3 } from "./Vector.js";
+import Vec, { Vec2, Vec3 } from "./Vector.js";
 
 export default class Triangle {
-    constructor({ name, positions, colors, texCoords, normals, texture, emissive, material }) {
+    constructor({ name, positions, colors, emissive, material }) {
         this.name = name;
         this.colors = colors;
-        this.normals = normals;
-        this.texture = texture;
         this.positions = positions;
-        this.texCoords = texCoords;
         this.emissive = emissive;
         this.material = material;
         this.edges = [];
@@ -22,8 +19,6 @@ export default class Triangle {
         const u = this.tangents[0];
         const v = this.tangents[1];
         this.faceNormal = u.cross(v).normalize();
-
-
     }
 
     distanceToPoint(p) {
@@ -69,6 +64,26 @@ export default class Triangle {
         return this.faceNormal.dot(p.sub(this.positions[0])) >= 0;
     }
 
+    serialize() {
+        return {
+            type: Triangle.name,
+            name: this.name,
+            emissive: this.emissive,
+            colors: this.colors.map(x => x.toArray()),
+            positions: this.positions.map(x => x.toArray()),
+        }
+    }
+
+    static deserialize(json) {
+        return Triangle
+            .builder()
+            .name(json.name)
+            .positions(...json.positions.map(x => Vec.fromArray(x)))
+            .colors(...json.colors.map(x => new Color(x)))
+            .emissive(json.emissive)
+            .build()
+    }
+
     static builder() {
         return new TriangleBuilder();
     }
@@ -78,11 +93,8 @@ const indx = [1, 2, 3];
 class TriangleBuilder {
     constructor() {
         this._name;
-        this._texture;
-        this._normals = indx.map(() => Vec3());
         this._colors = indx.map(() => Color.BLACK);
         this._positions = indx.map(() => Vec3());
-        this._texCoords = indx.map(() => Vec2());
         this._emissive = false;
         this._material = Diffuse();
     }
@@ -104,23 +116,6 @@ class TriangleBuilder {
         return this;
     }
 
-    texCoords(t1, t2, t3) {
-        if ([t1, t2, t3].some(x => !x)) return this;
-        this._texCoords = [t1, t2, t3];
-        return this;
-    }
-
-    normals(n1, n2, n3) {
-        if ([n1, n2, n3].some(x => !x)) return this;
-        this._normals = [n1, n2, n3];
-        return this;
-    }
-
-    texture(image) {
-        this._texture = image
-        return this;
-    }
-
     emissive(isEmissive) {
         this._emissive = isEmissive;
         return this;
@@ -135,15 +130,13 @@ class TriangleBuilder {
         const attrs = {
             name: this._name,
             colors: this._colors,
-            normals: this._normals,
             positions: this._positions,
-            texCoords: this._texCoords,
             emissive: this._emissive,
             material: this._material
         };
         if (Object.values(attrs).some((x) => x === undefined)) {
             throw new Error("Triangle is incomplete");
         }
-        return new Triangle({ ...attrs, texture: this._texture });
+        return new Triangle({ ...attrs });
     }
 }

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ray Trace</title>
+    <title>Ray Trace Parallel</title>
     <style>
         body {
             background-color: rgb(26, 26, 26);
@@ -20,7 +20,7 @@
 <body>
 </body>
 <script type="module">
-    import Camera from "./Camera.js";
+    import Camera from "./CameraParallel.js";
     import Canvas from "./Canvas.js";
     import Color from "./Color.js";
     import Scene from "./Scene.js";
@@ -48,8 +48,8 @@
     }
 
     (() => {
-        const w = 640 / 2;
-        const h = 480 / 2;
+        const w = 640/2;
+        const h = 480/2;
         const canvas = Canvas.ofSize(w, h);
         let exposedCanvas = canvas.exposure();
         const camera = new Camera({ lookAt: Vec3(1.5, 1.5, 1.5) }).orbit(3, 0, 0);
@@ -214,55 +214,11 @@
             //     .build()
         )
 
-        function debugTrace(p, n, bounces) {
-            if (bounces <= 0) return;
-            function scatter() {
-                let randomInSphere = undefined;
-                while (true) {
-                    const random = Vec.RANDOM(3).map(x => 2 * x - 1);
-                    if (random.squareLength() >= 1) continue;
-                    randomInSphere = random.normalize();
-                    break;
-                }
-                if (!n) return randomInSphere;
-                if (randomInSphere.dot(n) >= 0) return randomInSphere;
-                return randomInSphere.scale(-1);
-            }
-            const v = scatter();
-            const hit = scene.interceptWith(Ray(p, v))
-            if (!hit) {
-                if (n) camera.rasterLine({ canvas, elem: { color: Color.ofRGB(1, 0, 1), positions: [p, p.add(v.scale(2))] } });
-                return;
-            }
-            const [hitP, elem] = hit;
-            if (elem.emissive) {
-                camera.rasterLine({ canvas, elem: { color: elem.color || elem.colors[0], positions: [p, hitP] } });
-                return;
-            }
-            camera.rasterLine({ canvas, elem: { color: elem.color || elem.colors[0], positions: [p, hitP] } });
-            let normal = elem.normalToPoint(hitP);
-            normal = v.dot(normal) <= 0 ? normal : normal.scale(-1);
-            debugTrace(hitP, normal, bounces - 1);
-        }
-
-
-        const METHODS = {
-            default: () => {
-                camera.sceneShot(scene).to(exposedCanvas);
-            },
-            square: () => {
-                camera.squareShot(scene).to(exposedCanvas);
-            },
-            debug: () => {
-                debugTrace(Vec3(1.5, 1.5, 1), undefined, 10);
-            }
-        }
-
         // play
         const play = async ({ time, oldT }) => {
             const newT = new Date().getTime();
             const dt = (new Date().getTime() - oldT) * 1e-3;
-            METHODS.default();
+            await camera.sceneShot(scene).to(exposedCanvas);
             setTimeout(() => play({
                 oldT: newT,
                 time: time + dt,

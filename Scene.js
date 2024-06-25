@@ -1,5 +1,7 @@
 import Box from "./Box.js";
 import { argmin } from "./Math.js";
+import Point from "./Point.js";
+import Triangle from "./Triangle.js";
 
 export default class Scene {
   constructor() {
@@ -59,5 +61,17 @@ export default class Scene {
 
   debug(params) {
     return params.canvas;
+  }
+
+  serialize() {
+    return this.getElements().map(x => x.serialize())
+  }
+
+  static deserialize(serializedScene) {
+    return new Scene()
+      .addList(serializedScene.map(x => {
+        if(x.type  === Triangle.name) return Triangle.deserialize(x);
+        if(x.type  === Point.name) return Point.deserialize(x); 
+      }));
   }
 }

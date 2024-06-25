@@ -1,1 +1,1 @@
-export const MAX_8BIT = 256;
+export const MAX_8BIT = 255;

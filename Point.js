@@ -4,14 +4,11 @@ import { Diffuse } from "./Material.js";
 import Vec, { Vec2, Vec3 } from "./Vector.js";
 
 class Point {
-    constructor({ name, position, color, texCoord, normal, radius, texture, emissive, material }) {
+    constructor({ name, position, color, radius, emissive, material }) {
         this.name = name;
         this.color = color;
         this.radius = radius;
-        this.normals = normal;
-        this.texture = texture;
         this.position = position;
-        this.texCoord = texCoord;
         this.emissive = emissive;
         this.material = material;
     }
@@ -60,6 +57,28 @@ class Point {
         return p.sub(this.position).length() < this.radius;
     }
 
+    serialize() {
+        return {
+            type: Point.name,
+            name: this.name,
+            radius: this.radius,
+            emissive: this.emissive,
+            color: this.color.toArray(),
+            position: this.position.toArray(),
+        }
+    }
+
+    static deserialize(json) {
+        return Point
+            .builder()
+            .name(json.name)
+            .radius(json.radius)
+            .position(Vec.fromArray(json.position))
+            .color(new Color(json.color))
+            .emissive(json.emissive)
+            .build()
+    }
+
     static builder() {
         return new PointBuilder();
     }
@@ -68,12 +87,9 @@ class Point {
 class PointBuilder {
     constructor() {
         this._name;
-        this._texture;
         this._radius = 1;
-        this._normal = Vec3();
         this._color = Color.BLACK;
         this._position = Vec3();
-        this._texCoord = Vec2();
         this._emissive = false;
         this._material = Diffuse();
     }
@@ -89,12 +105,6 @@ class PointBuilder {
         return this;
     }
 
-    normal(normal) {
-        if (!normal) return this;
-        this._normal = normal;
-        return this;
-    }
-
     radius(radius) {
         if (!radius) return this;
         this._radius = radius;
@@ -104,17 +114,6 @@ class PointBuilder {
     position(posVec3) {
         if (!posVec3) return this;
         this._position = posVec3;
-        return this;
-    }
-
-    texCoord(t) {
-        if (!t) return this;
-        this._texCoord = t;
-        return this;
-    }
-
-    texture(image) {
-        this._texture = image
         return this;
     }
 
@@ -132,19 +131,18 @@ class PointBuilder {
         const attrs = {
             name: this._name,
             color: this._color,
-            normal: this._normal,
             radius: this._radius,
             position: this._position,
-            texCoord: this._texCoord,
             emissive: this._emissive,
             material: this._material
         }
         if (Object.values(attrs).some((x) => x === undefined)) {
             throw new Error("Point is incomplete");
         }
-        return new Point({ ...attrs, texture: this._texture });
+        return new Point({ ...attrs, });
     }
 }
+
 
 function sphereInterception(point, ray) {
     const { init, dir } = ray;

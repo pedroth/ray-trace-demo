@@ -102,6 +102,15 @@ export default class Canvas {
       this._image[index + 3] = MAX_8BIT;
       return this;
     }
+
+    ans.setPxlData = (index, [r, g, b]) => {
+      this._image[index] = this._image[index] + (r * MAX_8BIT - this._image[index]) / it;
+      this._image[index + 1] = this._image[index + 1] + (g * MAX_8BIT - this._image[index + 1]) / it;
+      this._image[index + 2] = this._image[index + 2] + (b * MAX_8BIT - this._image[index + 2]) / it;
+      this._image[index + 3] = MAX_8BIT;
+      return ans;
+    }
+
     ans.paint = () => {
       if (it < time) it++
       return this.paint();
@@ -229,6 +238,14 @@ export default class Canvas {
     j = mod(j, w);
     let index = 4 * (w * i + j);
     return Color.ofRGBRaw(this._image[index], this._image[index + 1], this._image[index + 2], this._image[index + 3]);
+  }
+
+  setPxlData(index, [r, g, b]) {
+    this._image[index] = r * MAX_8BIT;
+    this._image[index + 1] = g * MAX_8BIT;
+    this._image[index + 2] = b * MAX_8BIT;
+    this._image[index + 3] = MAX_8BIT;
+    return this;
   }
 
   //========================================================================================
