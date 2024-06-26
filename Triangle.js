@@ -1,6 +1,6 @@
 import Box from "./Box.js";
 import Color from "./Color.js";
-import { Diffuse } from "./Material.js";
+import { Diffuse , MATERIALS} from "./Material.js";
 import Vec, { Vec2, Vec3 } from "./Vector.js";
 
 export default class Triangle {
@@ -71,16 +71,19 @@ export default class Triangle {
             emissive: this.emissive,
             colors: this.colors.map(x => x.toArray()),
             positions: this.positions.map(x => x.toArray()),
+            material: {type: this.material.type, args: this.material.args}
         }
     }
 
     static deserialize(json) {
+        const {type, args} = json.material;
         return Triangle
             .builder()
             .name(json.name)
             .positions(...json.positions.map(x => Vec.fromArray(x)))
             .colors(...json.colors.map(x => new Color(x)))
             .emissive(json.emissive)
+            .material(MATERIALS[type](...args))
             .build()
     }
 

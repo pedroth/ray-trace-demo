@@ -3,10 +3,11 @@ import Ray from "./Ray.js";
 import Vec, { Vec2, Vec3 } from "./Vector.js";
 
 const PARAMS = {
-  samplesPerPxl: 3,
-  bounces: 1,
+  samplesPerPxl: 1,
+  bounces: 5,
   variance: 0.001,
-  gamma: 0.1
+  gamma: 0.5,
+  importanceSampling: false,
 };
 
 export default class Camera {
@@ -15,9 +16,10 @@ export default class Camera {
     this.lookAt = lookAt ?? Vec3(0, 0, 0);
     this.distanceToPlane = distanceToPlane ?? 1;
     this.position = position ?? Vec3(3, 0, 0);
-    this._orientCoords = orientCoords || Vec2();
-    this._orbitCoords = orbitCoords || Vec3(this.position.length(), 0, 0);
-    this.orient();
+    this._orientCoords = orientCoords ?? Vec2();
+    this._orbitCoords = orbitCoords;
+    if(this._orbitCoords) this.orbit(...this._orbitCoords.toArray());
+    else this.orient(...this._orientCoords.toArray());
   }
 
   clone() {
@@ -25,6 +27,8 @@ export default class Camera {
       lookAt: this.lookAt,
       position: this.position,
       distanceToPlane: this.distanceToPlane,
+      orientCoords: this._orientCoords,
+      orbitCoords: this._orbitCoords,
     })
   }
 
@@ -154,14 +158,14 @@ export default class Camera {
     const variance = params.variance;
     const gamma = params.gamma;
     const invSamples = (bounces || 1) / samplesPerPxl;
+    const isImportanceSampling = params.importanceSampling;
     const lambda = ray => {
       let c = Color.BLACK;
       for (let i = 0; i < samplesPerPxl; i++) {
         const epsilon = Vec.RANDOM(3).scale(variance);
         const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
         const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
-        c = c.add(trace(r, scene, { bounces }))
-        // c = c.add(rayTrace(r, scene, { bounces }));
+        c = isImportanceSampling ? c.add(rayTrace(r, scene, { bounces })) : c.add(trace(r, scene, { bounces }))
         // c = c.add(trace(r, scene, { bounces }).add(rayTrace(r, scene, { bounces })));
       }
       return c.scale(invSamples).toGamma(gamma);
@@ -238,6 +242,8 @@ export default class Camera {
       lookAt: this.lookAt.toArray(),
       distanceToPlane: this.distanceToPlane,
       position: this.position.toArray(),
+      orientCoords: this._orientCoords.toArray(),
+      orbitCoords: this._orbitCoords.toArray(),
     }
   }
 

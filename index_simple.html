@@ -166,14 +166,14 @@
                 .positions(Vec3(2, 2, 2.9), Vec3(1, 2, 2.9), Vec3(1, 1, 2.9))
                 .emissive(true)
                 .build(),
-            // Point
-            //     .builder()
-            //     .radius(0.25)
-            //     .name("sphere")
-            //     .color(Color.ofRGB(1, 0, 1))
-            //     .material(Alpha(0.1))
-            //     .position(Vec3(1.5, 0.5, 1.5))
-            //     .build(),
+            Point
+                .builder()
+                .radius(0.25)
+                .name("sphere")
+                .color(Color.ofRGB(1, 0, 1))
+                .material(Alpha(0.1))
+                .position(Vec3(1.5, 0.5, 1.5))
+                .build(),
             Point
                 .builder()
                 .radius(0.25)
@@ -182,36 +182,36 @@
                 // .emissive(true)
                 .position(Vec3(1.5, 1.5, 1.0))
                 .build(),
-            // Point
-            //     .builder()
-            //     .radius(0.5)
-            //     .name("glass-sphere")
-            //     .color(Color.ofRGB(1, 1, 1))
-            //     .material(DiElectric(1.3))
-            //     .position(Vec3(1.0, 1.5, 1.0))
-            //     .build(),
-            // Triangle
-            //     .builder()
-            //     .name("alpha-tri")
-            //     .colors(Color.ofRGB(1, 1, 0), Color.ofRGB(1, 1, 0), Color.ofRGB(1, 1, 0))
-            //     .material(Metallic())
-            //     .positions(Vec3(1, 0, 0), Vec3(0, 1, 0), Vec3(0, 0, 1))
-            //     .build(),
-            // Triangle
-            //     .builder()
-            //     .name("alpha-tri-2")
-            //     .colors(Color.ofRGB(1, 1, 1), Color.ofRGB(1, 1, 1), Color.ofRGB(1, 1, 1))
-            //     .material(DiElectric(2))
-            //     .positions(Vec3(3, 1, 1), Vec3(3, 2, 1), Vec3(3, 1.5, 2))
-            //     .build(),
-            // Point
-            //     .builder()
-            //     .radius(0.25)
-            //     .name("alpha-sphere")
-            //     .color(Color.ofRGB(0, 1, 1))
-            //     .position(Vec3(3, 1.5, 2))
-            //     .material(Alpha(0.25))
-            //     .build()
+            Point
+                .builder()
+                .radius(0.5)
+                .name("glass-sphere")
+                .color(Color.ofRGB(1, 1, 1))
+                .material(DiElectric(1.3))
+                .position(Vec3(1.0, 1.5, 1.0))
+                .build(),
+            Triangle
+                .builder()
+                .name("alpha-tri")
+                .colors(Color.ofRGB(1, 1, 0), Color.ofRGB(1, 1, 0), Color.ofRGB(1, 1, 0))
+                .material(Metallic())
+                .positions(Vec3(1, 0, 0), Vec3(0, 1, 0), Vec3(0, 0, 1))
+                .build(),
+            Triangle
+                .builder()
+                .name("alpha-tri-2")
+                .colors(Color.ofRGB(1, 1, 1), Color.ofRGB(1, 1, 1), Color.ofRGB(1, 1, 1))
+                .material(DiElectric(2))
+                .positions(Vec3(3, 1, 1), Vec3(3, 2, 1), Vec3(3, 1.5, 2))
+                .build(),
+            Point
+                .builder()
+                .radius(0.25)
+                .name("alpha-sphere")
+                .color(Color.ofRGB(0, 1, 1))
+                .position(Vec3(3, 1.5, 2))
+                .material(Alpha(0.25))
+                .build()
         )
 
         function debugTrace(p, n, bounces) {

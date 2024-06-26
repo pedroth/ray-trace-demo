@@ -1,10 +1,10 @@
 import { Vec2, Vec3 } from "./Vector.js";
 
 const PARAMS = {
-  samplesPerPxl: 3,
-  bounces: 1,
+  samplesPerPxl: 1,
+  bounces: 5,
   variance: 0.001,
-  gamma: 0.1
+  gamma: 0.5
 };
 
 const N = navigator.hardwareConcurrency;
@@ -16,16 +16,19 @@ export default class CameraParallel {
     this.lookAt = lookAt ?? Vec3(0, 0, 0);
     this.distanceToPlane = distanceToPlane ?? 1;
     this.position = position ?? Vec3(3, 0, 0);
-    this._orientCoords = orientCoords || Vec2();
-    this._orbitCoords = orbitCoords || Vec3(this.position.length(), 0, 0);
-    this.orbit();
+    this._orientCoords = orientCoords ?? Vec2();
+    this._orbitCoords = orbitCoords;
+    if(this._orbitCoords) this.orbit(...this._orbitCoords.toArray());
+    else this.orient(...this._orientCoords.toArray());
   }
 
   clone() {
-    return new Camera({
+    return new CameraParallel({
       lookAt: this.lookAt,
       position: this.position,
       distanceToPlane: this.distanceToPlane,
+      orientCoords: this._orientCoords,
+      orbitCoords: this._orbitCoords,
     })
   }
 
@@ -148,8 +151,8 @@ export default class CameraParallel {
       lookAt: this.lookAt.toArray(),
       distanceToPlane: this.distanceToPlane,
       position: this.position.toArray(),
-      orientCoords: this._orbitCoords.toArray(),
-      orbitCoords: this._orientCoords.toArray(),
+      orientCoords: this._orientCoords.toArray(),
+      orbitCoords: this._orbitCoords.toArray(),
     }
   }
 

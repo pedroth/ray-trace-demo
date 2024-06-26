@@ -25,6 +25,7 @@ function main(inputs) {
     const variance = params.variance;
     const gamma = params.gamma;
     const invSamples = (bounces || 1) / samplesPerPxl;
+    const isImportanceSampling = params.importanceSampling;
     // the order does matter
     for (let y = startRow; y < endRow; y++) {
         for (let x = 0; x < width; x++) {
@@ -34,8 +35,7 @@ function main(inputs) {
                 const epsilon = Vec.RANDOM(3).scale(variance);
                 const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
                 const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
-                c = c.add(trace(r, scene, { bounces }))
-                // c = c.add(rayTrace(r, scene, { bounces }));
+                c = isImportanceSampling ? c.add(rayTrace(r, scene, { bounces })) : c.add(trace(r, scene, { bounces }))
             }
             const color = c.scale(invSamples).toGamma(gamma);
             image[index++] = color.red;

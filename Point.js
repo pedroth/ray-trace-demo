@@ -1,6 +1,6 @@
 import Box from "./Box.js";
 import Color from "./Color.js";
-import { Diffuse } from "./Material.js";
+import { Diffuse, MATERIALS } from "./Material.js";
 import Vec, { Vec2, Vec3 } from "./Vector.js";
 
 class Point {
@@ -65,10 +65,12 @@ class Point {
             emissive: this.emissive,
             color: this.color.toArray(),
             position: this.position.toArray(),
+            material: {type: this.material.type, args: this.material.args}
         }
     }
 
     static deserialize(json) {
+        const {type, args} = json.material;
         return Point
             .builder()
             .name(json.name)
@@ -76,6 +78,7 @@ class Point {
             .position(Vec.fromArray(json.position))
             .color(new Color(json.color))
             .emissive(json.emissive)
+            .material(MATERIALS[type](...args))
             .build()
     }
 
