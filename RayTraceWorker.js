@@ -1,5 +1,8 @@
 import Camera, { rayTrace, trace } from "./Camera.js";
 import Scene from "./Scene.js"
+import Vec from "./Vector.js"
+import Color from "./Color.js"
+import Ray from "./Ray.js"
 
 function main(inputs) {
     const {
@@ -17,11 +20,24 @@ function main(inputs) {
     const bufferSize = width * (endRow - startRow + 1) * 4;
     const image = new Float32Array(bufferSize);
     let index = 0;
+    const bounces = params.bounces;
+    const samplesPerPxl = params.samplesPerPxl;
+    const variance = params.variance;
+    const gamma = params.gamma;
+    const invSamples = (bounces || 1) / samplesPerPxl;
     // the order does matter
     for (let y = startRow; y < endRow; y++) {
         for (let x = 0; x < width; x++) {
-            const color = trace(rayGen(x, height - 1 - y), scene, params).toGamma(params.gamma);
-            // const color = rayTrace(rayGen(x, height - 1 - y), scene, params);
+            let c = Color.BLACK;
+            const ray = rayGen(x, height - 1 - y)
+            for (let i = 0; i < samplesPerPxl; i++) {
+                const epsilon = Vec.RANDOM(3).scale(variance);
+                const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
+                const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
+                c = c.add(trace(r, scene, { bounces }))
+                // c = c.add(rayTrace(r, scene, { bounces }));
+            }
+            const color = c.scale(invSamples).toGamma(gamma);
             image[index++] = color.red;
             image[index++] = color.green;
             image[index++] = color.blue;
