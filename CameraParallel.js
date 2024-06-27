@@ -2,9 +2,10 @@ import { Vec2, Vec3 } from "./Vector.js";
 
 const PARAMS = {
   samplesPerPxl: 1,
-  bounces: 5,
+  bounces: 10,
   variance: 0.001,
-  gamma: 0.5
+  gamma: 0.5,
+  importanceSampling: true
 };
 
 const N = navigator.hardwareConcurrency;
