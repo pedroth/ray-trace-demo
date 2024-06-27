@@ -21,9 +21,9 @@
 
 </body>
 <script type="module">
-    import Canvas from "./Canvas.js";
-    import Color from "./Color.js";
-    import { Vec2 } from "./Vector.js";
+    import Canvas from "./src/Canvas.js";
+    import Color from "./src/Color.js";
+    import { Vec2 } from "./src/Vector.js";
 
     const w = 640 / 2;
     const h = 480 / 2;
@@ -392,6 +392,7 @@
         const newT = new Date().getTime();
         const dt = (new Date().getTime() - oldT) * 1e-3;
         METHODS.combo();
+        document.title = `2D Light, FPS: ${(Math.floor(1 / dt))}`;
         // moving light
         // scene[0].position = Vec2(Math.cos(time), Math.sin(time));
         setTimeout(() => play({

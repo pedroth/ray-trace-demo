@@ -2,6 +2,7 @@
 
 Path trace using just `CPU` and `js`. The purpose of this is to understand the algorithms behind realistic images.
 
+![](./ray_trace.png)
 
 - [simple path tracer](/index.html)
 - [parallel path tracer](/index_parallel.html)

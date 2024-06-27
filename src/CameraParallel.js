@@ -5,11 +5,11 @@ const PARAMS = {
   bounces: 10,
   variance: 0.001,
   gamma: 0.5,
-  importanceSampling: true
+  importanceSampling: false
 };
 
 const N = navigator.hardwareConcurrency;
-export const WORKERS = [...Array(N)].map(() => new Worker("./RayTraceWorker.js", { type: 'module' }));
+export const WORKERS = [...Array(N)].map(() => new Worker("./src/RayTraceWorker.js", { type: 'module' }));
 
 export default class CameraParallel {
   constructor(props = {}) {
@@ -19,7 +19,7 @@ export default class CameraParallel {
     this.position = position ?? Vec3(3, 0, 0);
     this._orientCoords = orientCoords ?? Vec2();
     this._orbitCoords = orbitCoords;
-    if(this._orbitCoords) this.orbit(...this._orbitCoords.toArray());
+    if (this._orbitCoords) this.orbit(...this._orbitCoords.toArray());
     else this.orient(...this._orientCoords.toArray());
   }
 
@@ -106,7 +106,6 @@ export default class CameraParallel {
   }
 
   sceneShot(scene, params = PARAMS) {
-    let it = 1;
     return {
       to: canvas => {
         const w = canvas.width;
@@ -139,10 +138,7 @@ export default class CameraParallel {
               });
             })
           )
-          .then(() => {
-            it++;
-            canvas.paint()
-          })
+          .then(() => canvas.paint())
       }
     }
   }
