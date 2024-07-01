@@ -5,7 +5,7 @@ const PARAMS = {
   bounces: 10,
   variance: 0.001,
   gamma: 0.5,
-  importanceSampling: false
+  importanceSampling: true
 };
 
 const N = navigator.hardwareConcurrency;

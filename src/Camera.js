@@ -1,5 +1,6 @@
 import Color from "./Color.js";
 import Ray from "./Ray.js";
+import { rayTrace, trace, traceWithCache } from "./RayTrace.js";
 import Vec, { Vec2, Vec3 } from "./Vector.js";
 
 const PARAMS = {
@@ -7,7 +8,7 @@ const PARAMS = {
   bounces: 5,
   variance: 0.001,
   gamma: 0.5,
-  importanceSampling: false,
+  importanceSampling: true,
 };
 
 export default class Camera {
@@ -18,7 +19,7 @@ export default class Camera {
     this.position = position ?? Vec3(3, 0, 0);
     this._orientCoords = orientCoords ?? Vec2();
     this._orbitCoords = orbitCoords;
-    if(this._orbitCoords) this.orbit(...this._orbitCoords.toArray());
+    if (this._orbitCoords) this.orbit(...this._orbitCoords.toArray());
     else this.orient(...this._orientCoords.toArray());
   }
 
@@ -203,8 +204,7 @@ export default class Camera {
           const epsilon = Vec.RANDOM(3).scale(variance);
           const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
           const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
-          // const c = trace(r, scene, { bounces }).toGamma(alpha);
-          const c = rayTrace(r, scene, { bounces }).toGamma(alpha);
+          const c = isImportanceSampling ? rayTrace(r, scene, { bounces }) : trace(r, scene, { bounces })
           canvas.drawSquare(
             Vec2(xp * w - side, yp * h - side),
             Vec2(xp * w + side, yp * h + side),
@@ -216,6 +216,25 @@ export default class Camera {
         return canvas;
       }
     }
+  }
+
+  cacheShot(scene, params = PARAMS) {
+    const bounces = params.bounces;
+    const samplesPerPxl = params.samplesPerPxl;
+    const variance = params.variance;
+    const gamma = params.gamma;
+    const invSamples = (bounces || 1) / samplesPerPxl;
+    const lambda = ray => {
+      let c = Color.BLACK;
+      for (let i = 0; i < samplesPerPxl; i++) {
+        const epsilon = Vec.RANDOM(3).scale(variance);
+        const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
+        const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
+        c = c.add(traceWithCache(r, scene, { bounces }))
+      }
+      return c.scale(invSamples).toGamma(gamma);
+    }
+    return this.rayMap(lambda, params);
   }
 
   rayFromImage(width, height) {
@@ -256,63 +275,4 @@ export default class Camera {
       orbitCoords: Vec.fromArray(json.orbitCoords)
     })
   }
-}
-
-export function trace(ray, scene, options) {
-  const { bounces } = options;
-  if (bounces < 0) return Color.BLACK;
-  const interception = scene.interceptWith(ray)
-  if (!interception) return Color.BLACK;
-  const [p, e] = interception;
-  const color = e.color ?? e.colors[0];
-  const mat = e.material;
-  let r = mat.scatter(ray, p, e);
-  let finalC = trace(
-    r,
-    scene,
-    { bounces: bounces - 1 }
-  );
-  const dot = Math.max(0, r.dir.dot(e.normalToPoint(r.init)));
-  return e.emissive ? color.scale(dot).add(color.mul(finalC)) : color.mul(finalC);
-  // return e.emissive ? color.add(color.mul(finalC)) : color.mul(finalC);
-}
-
-export function rayTrace(ray, scene, options) {
-  const { bounces } = options;
-  if (bounces < 0) return colorFromLight(ray.init, scene);
-  const interception = scene.interceptWith(ray)
-  if (!interception) return Color.BLACK;
-  const [p, e] = interception;
-  const color = e.color ?? e.colors[0];
-  const mat = e.material;
-  let r = mat.scatter(ray, p, e);
-  let finalC = rayTrace(
-    r,
-    scene,
-    { bounces: bounces - 1 }
-  );
-  return e.emissive ? color.add(color.mul(finalC)) : color.mul(finalC);
-}
-
-function colorFromLight(p, scene) {
-  const emissiveElements = scene.getElements().filter((e) => e.emissive);
-  let c = Color.BLACK
-  for (let i = 0; i < emissiveElements.length; i++) {
-    const light = emissiveElements[i];
-    const lightP = light.sample();
-    const v = lightP.sub(p);
-    const dir = v.normalize();
-    const hit = scene.interceptWith(Ray(p, dir));
-    if (!hit) continue;
-    if (hit) {
-      const [p, e] = hit;
-      const color = e.color ?? e.colors[0];
-      if (e.emissive) {
-        const n = e.normalToPoint(p);
-        const dot = Math.max(0, dir.dot(n));
-        c = c.add(color.scale(dot));
-      }
-    }
-  }
-  return c;
 }

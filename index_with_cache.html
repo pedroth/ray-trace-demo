@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ray Trace Parallel</title>
+    <title>Ray Trace</title>
     <style>
         body {
             background-color: rgb(26, 26, 26);
@@ -20,7 +20,7 @@
 <body>
 </body>
 <script type="module">
-    import Camera from "./src/CameraParallel.js";
+    import Camera from "./src/Camera.js";
     import Canvas from "./src/Canvas.js";
     import Color from "./src/Color.js";
     import Scene from "./src/Scene.js";
@@ -218,8 +218,8 @@
         const play = async ({ time, oldT }) => {
             const newT = new Date().getTime();
             const dt = (new Date().getTime() - oldT) * 1e-3;
-            document.title = `Parallel, FPS: ${(Math.floor(1 / dt))}`;
-            await camera.sceneShot(scene).to(exposedCanvas);
+            camera.cacheShot(scene).to(exposedCanvas);
+            document.title = `Ray Trace, FPS: ${(Math.floor(1 / dt))}`;
             setTimeout(() => play({
                 oldT: newT,
                 time: time + dt,

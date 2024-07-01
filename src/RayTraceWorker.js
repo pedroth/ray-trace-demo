@@ -1,8 +1,10 @@
-import Camera, { rayTrace, trace } from "./Camera.js";
+import Camera from "./Camera.js";
 import Scene from "./Scene.js"
 import Vec from "./Vector.js"
 import Color from "./Color.js"
 import Ray from "./Ray.js"
+import { rayTrace, trace, traceWithCache } from "./RayTrace.js";
+
 
 function main(inputs) {
     const {
@@ -35,7 +37,8 @@ function main(inputs) {
                 const epsilon = Vec.RANDOM(3).scale(variance);
                 const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
                 const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
-                c = isImportanceSampling ? c.add(rayTrace(r, scene, { bounces })) : c.add(trace(r, scene, { bounces }))
+                c = c.add(traceWithCache(r, scene, { bounces }))
+                // c = isImportanceSampling ? c.add(rayTrace(r, scene, { bounces })) : c.add(trace(r, scene, { bounces }))
             }
             const color = c.scale(invSamples).toGamma(gamma);
             image[index++] = color.red;
