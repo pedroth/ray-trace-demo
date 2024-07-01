@@ -1,4 +1,5 @@
 import Color from "./Color.js";
+import Ray from "./Ray.js";
 
 export function trace(ray, scene, options) {
     const { bounces } = options;
