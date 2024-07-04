@@ -13,7 +13,9 @@ const PARAMS = {
 };
 
 const N = navigator.hardwareConcurrency;
-const WORKERS = [...Array(N)].map(() => new Worker("./src/RayTraceWorker.js", { type: 'module' }));
+let WORKERS = [];
+let SQUARE_WORKERS = [];
+
 
 export default class Camera {
   constructor(props = {}) {
@@ -235,6 +237,7 @@ export default class Camera {
   }
 
   parallelShot(scene, params = PARAMS) {
+    if (WORKERS.length === 0) WORKERS = [...Array(N)].map(() => new Worker("./src/RayTraceWorker.js", { type: 'module' }));
     return {
       to: canvas => {
         const w = canvas.width;
@@ -262,6 +265,47 @@ export default class Camera {
                   height: canvas.height,
                   scene: scene.serialize(),
                   params: params,
+                  camera: this.serialize()
+                });
+              });
+            })
+          )
+          .then(() => canvas.paint())
+      }
+    }
+  }
+
+  parallelSquareShot(scene, params = PARAMS) {
+    if (SQUARE_WORKERS.length === 0) SQUARE_WORKERS = [...Array(N)].map(() => new Worker("./src/SquareTraceWorker.js", { type: 'module' }));
+    return {
+      to: canvas => {
+        const BUDGET = params.budget ?? 10000;
+        const w = canvas.width;
+        const h = canvas.height;
+        let side = Math.sqrt(w * h / BUDGET);
+        return Promise
+          .all(
+            SQUARE_WORKERS.map((worker, k) => {
+              return new Promise((resolve) => {
+                worker.onmessage = message => {
+                  const { xs, ys, colors } = message.data;
+                  for (let i = 0; i < xs.length; i++) {
+                    const x = xs[i];
+                    const y = ys[i];
+                    const c = colors[i];
+                    canvas.drawSquare(
+                      Vec2(x * w - side, y * h - side),
+                      Vec2(x * w + side, y * h + side),
+                      () => Color.ofRGB(c[0], c[1], c[2])
+                    );
+                  }
+                  resolve();
+                };
+                worker.postMessage({
+                  params: params,
+                  width: canvas.width,
+                  height: canvas.height,
+                  scene: scene.serialize(),
                   camera: this.serialize()
                 });
               });

@@ -393,8 +393,7 @@
         const dt = (new Date().getTime() - oldT) * 1e-3;
         METHODS.combo();
         document.title = `2D Light, FPS: ${(Math.floor(1 / dt))}`;
-        // moving light
-        // scene[0].position = Vec2(Math.cos(time), Math.sin(time));
+        // scene[0].position = Vec2(Math.cos(time), Math.sin(time)); // moving light
         setTimeout(() => play({
             oldT: newT,
             time: time + dt,
