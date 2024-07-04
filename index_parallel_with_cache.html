@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ray Trace</title>
+    <title>Ray Trace Parallel</title>
     <style>
         body {
             background-color: rgb(26, 26, 26);
@@ -20,7 +20,7 @@
 <body>
 </body>
 <script type="module">
-    import Camera from "./src/Camera.js";
+    import Camera from "./src/CameraParallel.js";
     import Canvas from "./src/Canvas.js";
     import Color from "./src/Color.js";
     import Scene from "./src/Scene.js";
@@ -29,7 +29,6 @@
     import Vec, { Vec2, Vec3 } from "./src/Vector.js";
     import Ray from "./src/Ray.js";
     import { DiElectric, Metallic, Alpha } from "./src/Material.js";
-    import GUI from "./src/GUI.js";
 
     function toggleFullScreen(elem) {
         if (!document.fullscreenElement &&    // alternative standard method
@@ -48,22 +47,12 @@
         }
     }
 
-    const PARAMS = {
-        samplesPerPxl: 1,
-        bounces: 5,
-        variance: 0.001,
-        gamma: 0.5,
-        importanceSampling: true,
-        useCache: false,
-    };
-
     (() => {
         const w = 640 / 2;
         const h = 480 / 2;
         const canvas = Canvas.ofSize(w, h);
         let exposedCanvas = canvas.exposure();
         const camera = new Camera({ lookAt: Vec3(1.5, 1.5, 1.5) }).orbit(3, 0, 0);
-        
         // mouse handling
         let mousedown = false;
         let mouse = Vec2();
@@ -225,44 +214,12 @@
                 .build()
         )
 
-        function debugTrace(p, n, bounces) {
-            if (bounces <= 0) return;
-            function scatter() {
-                let randomInSphere = undefined;
-                while (true) {
-                    const random = Vec.RANDOM(3).map(x => 2 * x - 1);
-                    if (random.squareLength() >= 1) continue;
-                    randomInSphere = random.normalize();
-                    break;
-                }
-                if (!n) return randomInSphere;
-                if (randomInSphere.dot(n) >= 0) return randomInSphere;
-                return randomInSphere.scale(-1);
-            }
-            const v = scatter();
-            const hit = scene.interceptWith(Ray(p, v))
-            if (!hit) {
-                if (n) camera.rasterLine({ canvas, elem: { color: Color.ofRGB(1, 0, 1), positions: [p, p.add(v.scale(2))] } });
-                return;
-            }
-            const [hitP, elem] = hit;
-            if (elem.emissive) {
-                camera.rasterLine({ canvas, elem: { color: elem.color || elem.colors[0], positions: [p, hitP] } });
-                return;
-            }
-            camera.rasterLine({ canvas, elem: { color: elem.color || elem.colors[0], positions: [p, hitP] } });
-            let normal = elem.normalToPoint(hitP);
-            normal = v.dot(normal) <= 0 ? normal : normal.scale(-1);
-            debugTrace(hitP, normal, bounces - 1);
-        }
-
         // play
         const play = async ({ time, oldT }) => {
             const newT = new Date().getTime();
             const dt = (new Date().getTime() - oldT) * 1e-3;
-            camera.sceneShot(scene, PARAMS).to(exposedCanvas);
-            // debugTrace(Vec3(1.5, 1.5, 1), undefined, 10);
-            document.title = `Ray Trace, FPS: ${(Math.floor(1 / dt))}`;
+            document.title = `Parallel, FPS: ${(Math.floor(1 / dt))}`;
+            await camera.sceneShot(scene, true).to(exposedCanvas);
             setTimeout(() => play({
                 oldT: newT,
                 time: time + dt,
@@ -270,60 +227,15 @@
         }
         setTimeout(() => play({ oldT: new Date().getTime(), time: 0 }))
 
-        // gui
-        const gui = GUI.builder()
-            .add(
-                GUI.number("samplesPerPxl")
-                    .value(PARAMS.samplesPerPxl)
-                    .label("samplesPerPxl")
-                    .min(1),
-                GUI.range("bounces")
-                    .value(PARAMS.bounces)
-                    .label("bounces")
-                    .min(0)
-                    .max(10)
-                    .step(1),
-                GUI.range("variance")
-                    .value(PARAMS.variance)
-                    .label("variance")
-                    .min(0.001)
-                    .max(1)
-                    .step(0.001),
-                GUI.range("gamma")
-                    .value(PARAMS.gamma)
-                    .label("gamma")
-                    .min(0.001)
-                    .max(1)
-                    .step(0.001),
-                GUI.boolean("importanceSampling")
-                    .value(PARAMS.importanceSampling)
-                    .label("importance sampling"),
-                GUI.boolean("useCache")
-                    .value(PARAMS.useCache)
-                    .label("use cache"),
-                GUI.button("fullscreen")
-                    .label("fullscreen")
-                    .onClick(() => toggleFullScreen(canvasDom))
-            )
-            .onChange((newState) => {
-                Object
-                    .keys(newState)
-                    .forEach(k => {
-                        PARAMS[k] = newState[k];
-                    })
-            })
-            .build();
-
         const canvasDom = canvas.DOM;
+        canvasDom.addEventListener("click", () => {
+            toggleFullScreen(canvasDom);
+        })
         const container = document.createElement("div");
         container.setAttribute("style", "display: flex; flex-grow: 1; margin: auto");
         canvasDom.setAttribute("style", "flex-grow: 0.5")
         container.appendChild(canvasDom);
         document.body.appendChild(container);
-        const pane = document.createElement("div")
-        pane.appendChild(gui.DOM);
-        pane.setAttribute("style", "color: white; backgroundColor: gray; position:absolute; top:0px; right: 0px");
-        document.body.appendChild(pane);
     })()
 </script>
 
