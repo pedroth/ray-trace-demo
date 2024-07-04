@@ -37,8 +37,7 @@ function main(inputs) {
                 const epsilon = Vec.RANDOM(3).scale(variance);
                 const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
                 const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
-                c = c.add(traceWithCache(r, scene, { bounces }))
-                // c = isImportanceSampling ? c.add(rayTrace(r, scene, { bounces })) : c.add(trace(r, scene, { bounces }))
+                c = isImportanceSampling ? c.add(rayTrace(r, scene, { bounces })) : c.add(trace(r, scene, { bounces }))
             }
             const color = c.scale(invSamples).toGamma(gamma);
             image[index++] = color.red;

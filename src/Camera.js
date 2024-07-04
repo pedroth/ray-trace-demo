@@ -181,7 +181,7 @@ export default class Camera {
         // params
         const bounces = params.bounces;
         const variance = params.variance;
-        const alpha = params.alpha;
+        const isImportanceSampling = params.importanceSampling;
         // canvas 
         const w = canvas.width;
         const h = canvas.height;
