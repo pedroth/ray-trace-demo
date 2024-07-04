@@ -251,14 +251,9 @@
         const play = async ({ time, oldT }) => {
             const newT = new Date().getTime();
             const dt = (new Date().getTime() - oldT) * 1e-3;
-            if (PARAMS.squareRender && PARAMS.useParallel)
-                await camera.parallelSquareShot(scene, PARAMS).to(exposedCanvas);
-            if (PARAMS.squareRender)
-                camera.squareShot(scene, PARAMS).to(exposedCanvas);
-            else if (PARAMS.useParallel)
-                await camera.parallelShot(scene, PARAMS).to(exposedCanvas);
-            else
-                camera.sceneShot(scene, PARAMS).to(exposedCanvas);
+            if (PARAMS.squareRender) camera.squareShot(scene, PARAMS).to(exposedCanvas);
+            else if (PARAMS.useParallel) await camera.parallelShot(scene, PARAMS).to(exposedCanvas);
+            else camera.sceneShot(scene, PARAMS).to(exposedCanvas);
             // debugTrace(Vec3(1.5, 1.5, 1), undefined, 10);
             document.title = `Ray Trace, FPS: ${(Math.floor(1 / dt))}`;
             setTimeout(() => play({
