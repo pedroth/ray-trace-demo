@@ -85,7 +85,7 @@ const lightColorCache = (gridSpace) => {
     }
     return ans;
 }
-const cache = lightColorCache(0.1);
+const cache = lightColorCache(0.05);
 export function traceWithCache(ray, scene, options) {
     const { bounces } = options;
     if (bounces < 0) return Color.BLACK;

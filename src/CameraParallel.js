@@ -9,7 +9,7 @@ const PARAMS = {
 };
 
 const N = navigator.hardwareConcurrency;
-export const WORKERS = [...Array(N)].map(() => new Worker("./src/RayTraceWorker.js", { type: 'module' }));
+const WORKERS = [...Array(N)].map(() => new Worker("./src/RayTraceWorker.js", { type: 'module' }));
 
 export default class CameraParallel {
   constructor(props = {}) {

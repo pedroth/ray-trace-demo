@@ -29,7 +29,7 @@
     import Vec, { Vec2, Vec3 } from "./src/Vector.js";
     import Ray from "./src/Ray.js";
     import { DiElectric, Metallic, Alpha } from "./src/Material.js";
-    import GUI from "./src/GUI.js";
+    import { Pane } from "./tweakpane-4.0.4.min.js";
 
     function toggleFullScreen(elem) {
         if (!document.fullscreenElement &&    // alternative standard method
@@ -48,22 +48,13 @@
         }
     }
 
-    const PARAMS = {
-        samplesPerPxl: 1,
-        bounces: 5,
-        variance: 0.001,
-        gamma: 0.5,
-        importanceSampling: true,
-        useCache: false,
-    };
-
     (() => {
         const w = 640 / 2;
         const h = 480 / 2;
         const canvas = Canvas.ofSize(w, h);
         let exposedCanvas = canvas.exposure();
         const camera = new Camera({ lookAt: Vec3(1.5, 1.5, 1.5) }).orbit(3, 0, 0);
-        
+
         // mouse handling
         let mousedown = false;
         let mouse = Vec2();
@@ -260,7 +251,9 @@
         const play = async ({ time, oldT }) => {
             const newT = new Date().getTime();
             const dt = (new Date().getTime() - oldT) * 1e-3;
-            camera.sceneShot(scene, PARAMS).to(exposedCanvas);
+            if (PARAMS.squareRender) camera.squareShot(scene, PARAMS).to(exposedCanvas);
+            else if (PARAMS.useParallel) await camera.parallelShot(scene, PARAMS).to(exposedCanvas);
+            else camera.sceneShot(scene, PARAMS).to(exposedCanvas);
             // debugTrace(Vec3(1.5, 1.5, 1), undefined, 10);
             document.title = `Ray Trace, FPS: ${(Math.floor(1 / dt))}`;
             setTimeout(() => play({
@@ -269,50 +262,39 @@
             }));
         }
         setTimeout(() => play({ oldT: new Date().getTime(), time: 0 }))
-
+        const PARAMS = {
+            samplesPerPxl: 1,
+            bounces: 5,
+            variance: 0.001,
+            gamma: 0.5,
+            useCache: false,
+            useParallel: true,
+            squareRender: false,
+            importanceSampling: false,
+            budget: 10000,
+        };
         // gui
-        const gui = GUI.builder()
-            .add(
-                GUI.number("samplesPerPxl")
-                    .value(PARAMS.samplesPerPxl)
-                    .label("samplesPerPxl")
-                    .min(1),
-                GUI.range("bounces")
-                    .value(PARAMS.bounces)
-                    .label("bounces")
-                    .min(0)
-                    .max(10)
-                    .step(1),
-                GUI.range("variance")
-                    .value(PARAMS.variance)
-                    .label("variance")
-                    .min(0.001)
-                    .max(1)
-                    .step(0.001),
-                GUI.range("gamma")
-                    .value(PARAMS.gamma)
-                    .label("gamma")
-                    .min(0.001)
-                    .max(1)
-                    .step(0.001),
-                GUI.boolean("importanceSampling")
-                    .value(PARAMS.importanceSampling)
-                    .label("importance sampling"),
-                GUI.boolean("useCache")
-                    .value(PARAMS.useCache)
-                    .label("use cache"),
-                GUI.button("fullscreen")
-                    .label("fullscreen")
-                    .onClick(() => toggleFullScreen(canvasDom))
-            )
-            .onChange((newState) => {
-                Object
-                    .keys(newState)
-                    .forEach(k => {
-                        PARAMS[k] = newState[k];
-                    })
-            })
-            .build();
+        const pane = new Pane({ title: "Parameters" });
+        pane.addBinding(PARAMS, "samplesPerPxl", { min: 0, max: 10, step: 1 });
+        pane.addBinding(PARAMS, "bounces", { min: 0, max: 10, step: 1 });
+        pane.addBinding(PARAMS, "variance", { min: 0, max: 0.1, step: 0.001 });
+        pane.addBinding(PARAMS, "gamma", { min: 0, max: 1, step: 0.01 });
+        pane.addBinding(PARAMS, "importanceSampling", { label: "light samples" });
+        pane.addBinding(PARAMS, "useCache", { label: "cache" });
+        pane.addBinding(PARAMS, "useParallel", { label: "parallel" });
+
+        const f = pane.addFolder({
+            title: 'Square Render',
+            expanded: true,
+        });
+        f.addBinding(PARAMS, "squareRender", { label: "square" })
+        f.addBinding(PARAMS, "budget", { min: 1000, max: 20000, step: 1000 })
+
+        const btn = pane.addButton({
+            title: 'fullscreen',
+        });
+        btn.on("click", () => toggleFullScreen(canvasDom));
+
 
         const canvasDom = canvas.DOM;
         const container = document.createElement("div");
@@ -320,10 +302,6 @@
         canvasDom.setAttribute("style", "flex-grow: 0.5")
         container.appendChild(canvasDom);
         document.body.appendChild(container);
-        const pane = document.createElement("div")
-        pane.appendChild(gui.DOM);
-        pane.setAttribute("style", "color: white; backgroundColor: gray; position:absolute; top:0px; right: 0px");
-        document.body.appendChild(pane);
     })()
 </script>
 

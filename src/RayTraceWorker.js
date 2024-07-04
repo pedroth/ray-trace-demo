@@ -15,7 +15,6 @@ function main(inputs) {
         params,
         scene: serializedScene,
         camera: serializedCamera,
-        withCache
     } = inputs;
     const scene = Scene.deserialize(serializedScene);
     const camera = Camera.deserialize(serializedCamera);
@@ -29,6 +28,7 @@ function main(inputs) {
     const gamma = params.gamma;
     const invSamples = (bounces || 1) / samplesPerPxl;
     const isImportanceSampling = params.importanceSampling;
+    const useCache = params.useCache;
     // the order does matter
     for (let y = startRow; y < endRow; y++) {
         for (let x = 0; x < width; x++) {
@@ -38,8 +38,12 @@ function main(inputs) {
                 const epsilon = Vec.RANDOM(3).scale(variance);
                 const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
                 const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
-                if (withCache) c = c.add(traceWithCache(r, scene, { bounces }));
-                else c = isImportanceSampling ? c.add(rayTrace(r, scene, { bounces })) : c.add(trace(r, scene, { bounces }))
+                if (useCache) c = c.add(traceWithCache(r, scene, { bounces }));
+                else {
+                    c = isImportanceSampling ?
+                        c.add(rayTrace(r, scene, { bounces })) :
+                        c.add(trace(r, scene, { bounces }))
+                }
             }
             const color = c.scale(invSamples).toGamma(gamma);
             image[index++] = color.red;
