@@ -4,6 +4,5 @@ Path trace using just `CPU` and `js`. The purpose of this is to understand the a
 
 ![](./ray_trace.png)
 
-- [simple path tracer](/index.html)
-- [parallel path tracer](/index_parallel.html)
-- [square path tracer](/index_square.html)
+- [3D Ray Tracer](/index.html)
+- [2D Ray Tracer](/index_square.html)
