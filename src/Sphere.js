@@ -3,7 +3,7 @@ import Color from "./Color.js";
 import { Diffuse, MATERIALS } from "./Material.js";
 import Vec, { Vec2, Vec3 } from "./Vector.js";
 
-class Point {
+class Sphere {
     constructor({ name, position, color, radius, emissive, material }) {
         this.name = name;
         this.color = color;
@@ -59,7 +59,7 @@ class Point {
 
     serialize() {
         return {
-            type: Point.name,
+            type: Sphere.name,
             name: this.name,
             radius: this.radius,
             emissive: this.emissive,
@@ -71,7 +71,7 @@ class Point {
 
     static deserialize(json) {
         const {type, args} = json.material;
-        return Point
+        return Sphere
             .builder()
             .name(json.name)
             .radius(json.radius)
@@ -83,11 +83,11 @@ class Point {
     }
 
     static builder() {
-        return new PointBuilder();
+        return new SphereBuilder();
     }
 }
 
-class PointBuilder {
+class SphereBuilder {
     constructor() {
         this._name;
         this._radius = 1;
@@ -140,9 +140,9 @@ class PointBuilder {
             material: this._material
         }
         if (Object.values(attrs).some((x) => x === undefined)) {
-            throw new Error("Point is incomplete");
+            throw new Error("Sphere is incomplete");
         }
-        return new Point({ ...attrs, });
+        return new Sphere({ ...attrs, });
     }
 }
 
@@ -162,4 +162,4 @@ function sphereInterception(point, ray) {
     return t1 >= 0 && t2 >= 0 ? t : undefined;
 }
 
-export default Point;
+export default Sphere;

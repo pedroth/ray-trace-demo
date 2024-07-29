@@ -1,6 +1,6 @@
 import Box from "./Box.js";
 import { argmin } from "./Math.js";
-import Point from "./Point.js";
+import Sphere from "./Sphere.js";
 import Triangle from "./Triangle.js";
 
 export default class Scene {
@@ -71,7 +71,7 @@ export default class Scene {
     return new Scene()
       .addList(serializedScene.map(x => {
         if(x.type  === Triangle.name) return Triangle.deserialize(x);
-        if(x.type  === Point.name) return Point.deserialize(x); 
+        if(x.type  === Sphere.name) return Sphere.deserialize(x); 
       }));
   }
 }

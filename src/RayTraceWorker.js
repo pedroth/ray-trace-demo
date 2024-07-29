@@ -5,7 +5,6 @@ import Color from "./Color.js"
 import Ray from "./Ray.js"
 import { rayTrace, trace, traceWithCache } from "./RayTrace.js";
 
-
 function main(inputs) {
     const {
         startRow,
