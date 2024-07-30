@@ -258,7 +258,7 @@ export default class Camera {
                 const ratio = Math.floor(h / WORKERS.length);
                 worker.postMessage({
                   startRow: k * ratio,
-                  endRow: Math.min(h - 1, (k + 1) * ratio),
+                  endRow: Math.min(h, (k + 1) * ratio),
                   width: canvas.width,
                   height: canvas.height,
                   scene: scene.serialize(),
