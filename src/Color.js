@@ -100,6 +100,7 @@ export default class Color {
   static RED = Color.ofRGB(1, 0, 0);
   static GREEN = Color.ofRGB(0, 1, 0);
   static BLUE = Color.ofRGB(0, 0, 1);
+  static YELLOW = Color.ofRGB(1, 1, 0);
   static BLACK = Color.ofRGB(0, 0, 0);
   static WHITE = Color.ofRGB(1, 1, 1);
   static GRAY = Color.ofRGB(0.5, 0.5, 0.5);

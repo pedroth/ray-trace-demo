@@ -1,4 +1,4 @@
-import { MAX_8BIT } from "./Constants.js";
+import { CHANNELS, MAX_8BIT } from "./Constants.js";
 
 export default class Canvas {
 
@@ -37,9 +37,9 @@ export default class Canvas {
     const n = this._image.length;
     const w = this._width;
     const h = this._height;
-    for (let k = 0; k < n; k += 4) {
-      const i = Math.floor(k / (4 * w));
-      const j = Math.floor((k / 4) % w);
+    for (let k = 0; k < n; k += CHANNELS) {
+      const i = Math.floor(k / (CHANNELS * w));
+      const j = Math.floor((k / CHANNELS) % w);
       const x = j;
       const y = h - 1 - i;
       const color = lambda(x, y);
@@ -67,9 +67,9 @@ export default class Canvas {
       const n = this._image.length;
       const w = this._width;
       const h = this._height;
-      for (let k = 0; k < n; k += 4) {
-        const i = Math.floor(k / (4 * w));
-        const j = Math.floor((k / 4) % w);
+      for (let k = 0; k < n; k += CHANNELS) {
+        const i = Math.floor(k / (CHANNELS * w));
+        const j = Math.floor((k / CHANNELS) % w);
         const x = j;
         const y = h - 1 - i;
         const color = lambda(x, y);

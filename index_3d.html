@@ -30,6 +30,9 @@
     import Ray from "./src/Ray.js";
     import { DiElectric, Metallic, Alpha } from "./src/Material.js";
     import { Pane } from "./tweakpane-4.0.4.min.js";
+    import localStorage from "./src/LocalStorage.js"
+
+    console.log("Number of cores:", navigator.hardwareConcurrency);
 
     function toggleFullScreen(elem) {
         if (!document.fullscreenElement &&    // alternative standard method
@@ -171,16 +174,24 @@
             Sphere
                 .builder()
                 .radius(0.25)
-                .name("sphere")
+                .name("sphere-1")
                 .color(Color.ofRGB(1, 0, 1))
-                .material(Alpha(0.1))
+                .material(Metallic(0.7))
                 .position(Vec3(1.5, 0.5, 1.5))
                 .build(),
             Sphere
                 .builder()
                 .radius(0.25)
                 .name("metal-sphere")
-                .color(Color.RED)
+                .color(Color.WHITE)
+                .material(Metallic())
+                .position(Vec3(1.5, 2.5, 1.5))
+                .build(),
+            Sphere
+                .builder()
+                .radius(0.25)
+                .name("red-sphere")
+                .color(Color.WHITE)
                 // .emissive(true)
                 .position(Vec3(1.5, 1.5, 1.0))
                 .build(),
@@ -255,14 +266,14 @@
             else if (PARAMS.useParallel) await camera.parallelShot(scene, PARAMS).to(exposedCanvas);
             else camera.sceneShot(scene, PARAMS).to(exposedCanvas);
             // debugTrace(Vec3(1.5, 1.5, 1), undefined, 10);
-            document.title = `Ray Trace, FPS: ${(Math.floor(1 / dt))}`;
-            setTimeout(() => play({
+            document.title = `Ray Trace, FPS: ${((1 / dt).toFixed(2))}`;
+            requestAnimationFrame(() => play({
                 oldT: newT,
                 time: time + dt,
             }));
         }
-        setTimeout(() => play({ oldT: new Date().getTime(), time: 0 }))
-        const PARAMS = {
+        requestAnimationFrame(() => play({ oldT: new Date().getTime(), time: 0 }))
+        const PARAMS = localStorage.getItem("PARAMS") ?? {
             samplesPerPxl: 1,
             bounces: 5,
             variance: 0.001,
@@ -294,8 +305,9 @@
             title: 'fullscreen',
         });
         btn.on("click", () => toggleFullScreen(canvasDom));
-
-
+        pane.on('change', () => {
+            localStorage.setItem("PARAMS", PARAMS);
+        });
         const canvasDom = canvas.DOM;
         const container = document.createElement("div");
         container.setAttribute("style", "display: flex; flex-grow: 1; margin: auto");

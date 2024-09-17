@@ -1,4 +1,6 @@
 import Color from "./Color.js";
+import { CHANNELS } from "./Constants.js";
+import MyWorker from "./parallel.js";
 import Ray from "./Ray.js";
 import { rayTrace, trace, traceWithCache } from "./RayTrace.js";
 import Vec, { Vec2, Vec3 } from "./Vector.js";
@@ -235,26 +237,26 @@ export default class Camera {
   }
 
   parallelShot(scene, params = PARAMS) {
-    if (WORKERS.length === 0) WORKERS = [...Array(N)].map(() => new Worker("./src/RayTraceWorker.js", { type: 'module' }));
+    if (WORKERS.length === 0) WORKERS = [...Array(N)].map(() => new MyWorker("./src/RayTraceWorker.js"));
     return {
       to: canvas => {
         const w = canvas.width;
         const h = canvas.height;
         return Promise
-          .all(
+          .allSettled(
             WORKERS.map((worker, k) => {
               return new Promise((resolve) => {
-                worker.onmessage = message => {
-                  const { image, startRow, endRow, } = message.data;
+                worker.onMessage(data => {
+                  const { image, startRow, endRow, } = data;
                   let index = 0;
-                  const startIndex = 4 * w * startRow;
-                  const endIndex = 4 * w * endRow;
-                  for (let i = startIndex; i < endIndex; i += 4) {
+                  const startIndex = CHANNELS * w * startRow;
+                  const endIndex = CHANNELS * w * endRow;
+                  for (let i = startIndex; i < endIndex; i += CHANNELS) {
                     canvas.setPxlData(i, [image[index++], image[index++], image[index++]]);
                     index++;
                   }
                   resolve();
-                };
+                });
                 const ratio = Math.floor(h / WORKERS.length);
                 worker.postMessage({
                   startRow: k * ratio,
