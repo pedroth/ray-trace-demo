@@ -279,6 +279,7 @@
             variance: 0.001,
             gamma: 0.5,
             useCache: false,
+            mode: "parallel",
             useParallel: true,
             squareRender: false,
             importanceSampling: false,
@@ -292,22 +293,39 @@
         pane.addBinding(PARAMS, "gamma", { min: 0, max: 1, step: 0.01 });
         pane.addBinding(PARAMS, "importanceSampling", { label: "light samples" });
         pane.addBinding(PARAMS, "useCache", { label: "cache" });
-        pane.addBinding(PARAMS, "useParallel", { label: "parallel" });
-
-        const f = pane.addFolder({
-            title: 'Square Render',
-            expanded: true,
+        const select = pane.addBinding(PARAMS, 'mode', {
+            options: {
+                default: 'default',
+                parallel: 'parallel',
+                square: "square"
+            }
         });
-        f.addBinding(PARAMS, "squareRender", { label: "square" })
-        f.addBinding(PARAMS, "budget", { min: 1000, max: 20000, step: 1000 })
-
-        const btn = pane.addButton({
-            title: 'fullscreen',
-        });
+        let squareFolder;
+        select.on("change", (ev) => {
+            if (ev.value === "parallel") {
+                PARAMS.useParallel = true;
+                PARAMS.squareRender = false;
+                pane.remove(squareFolder);
+            } else if (ev.value === "square") {
+                PARAMS.squareRender = true;
+                PARAMS.useParallel = false;
+                if (!squareFolder) {
+                    squareFolder = pane.addFolder({
+                        title: 'Square Render',
+                        expanded: true,
+                    });
+                    squareFolder.addBinding(PARAMS, "squareRender", { label: "square" });
+                    squareFolder.addBinding(PARAMS, "budget", { min: 1000, max: 20000, step: 1000 });
+                }
+            } else {
+                PARAMS.useParallel = false;
+                PARAMS.squareRender = false;
+                pane.remove(squareFolder);
+            }
+        })
+        const btn = pane.addButton({ title: 'fullscreen' });
         btn.on("click", () => toggleFullScreen(canvasDom));
-        pane.on('change', () => {
-            localStorage.setItem("PARAMS", PARAMS);
-        });
+        pane.on('change', () => { localStorage.setItem("PARAMS", PARAMS); });
         const canvasDom = canvas.DOM;
         const container = document.createElement("div");
         container.setAttribute("style", "display: flex; flex-grow: 1; margin: auto");

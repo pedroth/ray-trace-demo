@@ -1,31 +1,14 @@
 import Color from "./Color.js";
 import Ray from "./Ray.js";
 
-export function trace(ray, scene, options) {
-    const { bounces } = options;
-    if (bounces < 0) return Color.BLACK;
-    const interception = scene.interceptWith(ray)
-    if (!interception) return Color.BLACK;
-    const [p, e] = interception;
-    const color = e.color ?? e.colors[0];
-    const mat = e.material;
-    let r = mat.scatter(ray, p, e);
-    let finalC = trace(
-        r,
-        scene,
-        { bounces: bounces - 1 }
-    );
-    const dot = Math.max(0, r.dir.dot(e.normalToPoint(r.init)));
-    return e.emissive ? color.scale(dot).add(color.mul(finalC)) : color.mul(finalC);
-    // return e.emissive ? color.add(color.mul(finalC)) : color.mul(finalC);
-}
-
 export function rayTrace(ray, scene, options) {
-    const { bounces } = options;
-    if (bounces < 0) return colorFromLight(ray.init, scene);
+    const { bounces, importanceSampling, useCache } = options;
+    if (bounces < 0) return importanceSampling ? colorFromLight(ray.init, scene) : Color.BLACK;
     const interception = scene.interceptWith(ray)
     if (!interception) return Color.BLACK;
     const [p, e] = interception;
+    const cachedColor = cache.get(p);
+    if (cachedColor && useCache) return cachedColor;
     const color = e.color ?? e.colors[0];
     const mat = e.material;
     let r = mat.scatter(ray, p, e);
@@ -34,7 +17,10 @@ export function rayTrace(ray, scene, options) {
         scene,
         { bounces: bounces - 1 }
     );
-    return e.emissive ? color.add(color.mul(finalC)) : color.mul(finalC);
+    const dot = Math.max(0, r.dir.dot(e.normalToPoint(r.init)));
+    const finalColor = e.emissive ? color.scale(dot).add(color.mul(finalC)) : color.mul(finalC);
+    cache.set(p, finalColor);
+    return finalColor;
 }
 
 function colorFromLight(p, scene) {
@@ -86,24 +72,3 @@ const lightColorCache = (gridSpace) => {
     return ans;
 }
 const cache = lightColorCache(0.05);
-export function traceWithCache(ray, scene, options) {
-    const { bounces } = options;
-    if (bounces < 0) return Color.BLACK;
-    const interception = scene.interceptWith(ray)
-    if (!interception) return Color.BLACK;
-    const [p, e] = interception;
-    const cachedColor = cache.get(p);
-    if (cachedColor) return cachedColor;
-    const elementColor = e.color ?? e.colors[0];
-    const mat = e.material;
-    let r = mat.scatter(ray, p, e);
-    const tracedColor = traceWithCache(
-        r,
-        scene,
-        { bounces: bounces - 1 }
-    );
-    const dot = Math.max(0, r.dir.dot(e.normalToPoint(r.init)));
-    const finalColor = e.emissive ? elementColor.scale(dot).add(elementColor.mul(tracedColor)) : elementColor.mul(tracedColor);
-    cache.set(p, finalColor);
-    return finalColor;
-}

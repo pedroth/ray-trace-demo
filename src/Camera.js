@@ -2,7 +2,7 @@ import Color from "./Color.js";
 import { CHANNELS } from "./Constants.js";
 import MyWorker from "./parallel.js";
 import Ray from "./Ray.js";
-import { rayTrace, trace, traceWithCache } from "./RayTrace.js";
+import { rayTrace } from "./RayTrace.js";
 import Vec, { Vec2, Vec3 } from "./Vector.js";
 
 const PARAMS = {
@@ -14,7 +14,7 @@ const PARAMS = {
   useCache: false
 };
 
-const N = navigator.hardwareConcurrency;
+const NumberOfWorkers = navigator.hardwareConcurrency;
 let WORKERS = [];
 
 export default class Camera {
@@ -164,20 +164,13 @@ export default class Camera {
     const variance = params.variance;
     const gamma = params.gamma;
     const invSamples = (bounces || 1) / samplesPerPxl;
-    const isImportanceSampling = params.importanceSampling;
-    const useCache = params.useCache;
     const lambda = ray => {
       let c = Color.BLACK;
       for (let i = 0; i < samplesPerPxl; i++) {
         const epsilon = Vec.RANDOM(3).scale(variance);
         const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
         const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
-        if (useCache) c = c.add(traceWithCache(r, scene, { bounces }));
-        else {
-          c = isImportanceSampling ?
-            c.add(rayTrace(r, scene, { bounces })) :
-            c.add(trace(r, scene, { bounces }))
-        }
+        c = c.add(rayTrace(r, scene, params));
       }
       return c.scale(invSamples).toGamma(gamma);
     }
@@ -189,10 +182,7 @@ export default class Camera {
     return {
       to: canvas => {
         // params
-        const bounces = params.bounces;
         const variance = params.variance;
-        const isImportanceSampling = params.importanceSampling;
-        const useCache = params.useCache;
         const gamma = params.gamma;
         // canvas 
         const w = canvas.width;
@@ -217,12 +207,7 @@ export default class Camera {
           const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
           const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
           let c = Color.BLACK;
-          if (useCache) c = traceWithCache(r, scene, { bounces });
-          else {
-            c = isImportanceSampling ?
-              rayTrace(r, scene, { bounces }) :
-              trace(r, scene, { bounces })
-          }
+          c = c.add(rayTrace(r, scene, params));
           canvas.drawSquare(
             Vec2(xp * w - side, yp * h - side),
             Vec2(xp * w + side, yp * h + side),
@@ -237,7 +222,7 @@ export default class Camera {
   }
 
   parallelShot(scene, params = PARAMS) {
-    if (WORKERS.length === 0) WORKERS = [...Array(N)].map(() => new MyWorker("./src/RayTraceWorker.js"));
+    if (WORKERS.length === 0) WORKERS = [...Array(NumberOfWorkers)].map(() => new MyWorker("./src/RayTraceWorker.js"));
     return {
       to: canvas => {
         const w = canvas.width;
@@ -252,13 +237,12 @@ export default class Camera {
                   const startIndex = CHANNELS * w * startRow;
                   const endIndex = CHANNELS * w * endRow;
                   for (let i = startIndex; i < endIndex; i += CHANNELS) {
-                    canvas.setPxlData(i, [image[index++], image[index++], image[index++]]);
-                    index++;
+                    canvas.setPxlData(i, Color.ofRGB(image[index++], image[index++], image[index++], image[index++]));
                   }
                   resolve();
                 });
                 const ratio = Math.floor(h / WORKERS.length);
-                worker.postMessage({
+                const message = {
                   startRow: k * ratio,
                   endRow: Math.min(h, (k + 1) * ratio),
                   width: canvas.width,
@@ -266,7 +250,8 @@ export default class Camera {
                   scene: scene.serialize(),
                   params: params,
                   camera: this.serialize()
-                });
+                };
+                worker.postMessage(message)
               });
             })
           )

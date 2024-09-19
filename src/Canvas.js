@@ -1,42 +1,55 @@
+import Box from "./Box.js";
 import { CHANNELS, MAX_8BIT } from "./Constants.js";
+import { Vec2 } from "./Vector.js";
+
+const NUMBER_OF_CORES = navigator.hardwareConcurrency;
+const WORKERS = [];
 
 export default class Canvas {
 
   constructor(canvas) {
-    this._canvas = canvas;
-    this._width = canvas.width;
-    this._height = canvas.height;
-    this._ctx = this._canvas.getContext("2d", { willReadFrequently: true });
-    this._imageData = this._ctx.getImageData(0, 0, this._width, this._height);
-    this._image = this._imageData.data; // by changing this, imageData is change magically
-  }
-
-  get width() {
-    return this._canvas.width;
-  }
-
-  get height() {
-    return this._canvas.height;
+    this.width = Math.floor(canvas.width);;
+    this.height = Math.floor(canvas.height);
+    this.image = new Float32Array(CHANNELS * this.width * this.height);
+    this.box = new Box(Vec2(0, 0), Vec2(this.width, this.height));
+    this.canvas = canvas;
+    if (this.canvas.setAttribute) this.canvas?.setAttribute('tabindex', '1'); // for canvas to be focusable
+    this.ctx = this.canvas.getContext("2d", { willReadFrequently: true });
+    this.imageData = this.ctx.getImageData(0, 0, this.width, this.height);
   }
 
   get DOM() {
-    return this._canvas;
+    return this.canvas;
   }
 
-  /**
-    * color: Color
-    */
+  paint() {
+    const data = this.imageData.data;
+    for (let i = 0; i < data.length; i++) {
+      data[i] = this.image[i] * MAX_8BIT;
+    }
+    this.ctx.putImageData(this.imageData, 0, 0);
+    return this;
+  }
+
   fill(color) {
-    return this.map(() => color);
+    if (!color) return;
+    const n = this.image.length;
+    for (let k = 0; k < n; k += CHANNELS) {
+      this.image[k] = color.red;
+      this.image[k + 1] = color.green;
+      this.image[k + 2] = color.blue;
+      this.image[k + 3] = color.alpha;
+    }
+    return this;
   }
 
   /**
-   * lambda: (x: Number, y: Number, c: color) => Color
-   */
+    * lambda: (x: Number, y: Number) => Color 
+    */
   map(lambda) {
-    const n = this._image.length;
-    const w = this._width;
-    const h = this._height;
+    const n = this.image.length;
+    const w = this.width;
+    const h = this.height;
     for (let k = 0; k < n; k += CHANNELS) {
       const i = Math.floor(k / (CHANNELS * w));
       const j = Math.floor((k / CHANNELS) % w);
@@ -44,43 +57,78 @@ export default class Canvas {
       const y = h - 1 - i;
       const color = lambda(x, y);
       if (!color) continue;
-      this._image[k] = color.red * MAX_8BIT;
-      this._image[k + 1] = color.green * MAX_8BIT;
-      this._image[k + 2] = color.blue * MAX_8BIT;
-      this._image[k + 3] = MAX_8BIT;
+      this.image[k] = color.red;
+      this.image[k + 1] = color.green;
+      this.image[k + 2] = color.blue;
+      this.image[k + 3] = color.alpha;
     }
     return this.paint();
+  }
+
+
+  mapParallel(lambda, dependencies = []) {
+    return {
+      run: (vars = {}) => {
+        const workersPromises = parallelWorkers(this, lambda, dependencies, vars);
+        return Promise
+          .allSettled(workersPromises)
+          .then(() => {
+            return this.paint();
+          })
+      }
+    }
   }
 
   exposure(time = Number.MAX_VALUE) {
     let it = 1;
     const ans = {};
+    // chatGPT
     for (let key of Object.getOwnPropertyNames(Object.getPrototypeOf(this))) {
       const descriptor = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(this), key);
       if (descriptor && typeof descriptor.value === 'function') {
         ans[key] = descriptor.value.bind(this);
       }
     }
+    // end of chatGPT
     ans.width = this.width;
     ans.height = this.height;
     ans.map = (lambda) => {
-      const n = this._image.length;
-      const w = this._width;
-      const h = this._height;
-      for (let k = 0; k < n; k += CHANNELS) {
-        const i = Math.floor(k / (CHANNELS * w));
-        const j = Math.floor((k / CHANNELS) % w);
+      const n = this.image.length;
+      const w = this.width;
+      const h = this.height;
+      for (let k = 0; k < n; k += 4) {
+        const i = Math.floor(k / (4 * w));
+        const j = Math.floor((k / 4) % w);
         const x = j;
         const y = h - 1 - i;
         const color = lambda(x, y);
         if (!color) continue;
-        this._image[k] = this._image[k] + (color.red * MAX_8BIT - this._image[k]) / it;
-        this._image[k + 1] = this._image[k + 1] + (color.green * MAX_8BIT - this._image[k + 1]) / it;
-        this._image[k + 2] = this._image[k + 2] + (color.blue * MAX_8BIT - this._image[k + 2]) / it;
-        this._image[k + 3] = MAX_8BIT;
+        this.image[k] = this.image[k] + (color.red - this.image[k]) / it;
+        this.image[k + 1] = this.image[k + 1] + (color.green - this.image[k + 1]) / it;
+        this.image[k + 2] = this.image[k + 2] + (color.blue - this.image[k + 2]) / it;
+        this.image[k + 3] = this.image[k + 3] + (color.alpha - this.image[k + 3]) / it;
       }
       if (it < time) it++
       return this.paint();
+    }
+
+    ans.setPxl = (x, y, color) => {
+      const w = this.width;
+      const [i, j] = this.canvas2grid(x, y);
+      let index = 4 * (w * i + j);
+      this.image[index] = this.image[index] + (color.red - this.image[index]) / it;
+      this.image[index + 1] = this.image[index + 1] + (color.green - this.image[index + 1]) / it;
+      this.image[index + 2] = this.image[index + 2] + (color.blue - this.image[index + 2]) / it;
+      this.image[index + 3] = this.image[index + 3] + (color.alpha - this.image[index + 3]) / it;
+      return this;
+    }
+
+    ans.setPxlData = (index, color) => {
+      this.image[index] = this.image[index] + (color.red - this.image[index]) / it;
+      this.image[index + 1] = this.image[index + 1] + (color.green - this.image[index + 1]) / it;
+      this.image[index + 2] = this.image[index + 2] + (color.blue - this.image[index + 2]) / it;
+      this.image[index + 3] = this.image[index + 3] + (color.alpha - this.image[index + 3]) / it;
+      return ans;
     }
 
     ans.drawSquare = (minP, maxP, shader) => {
@@ -89,25 +137,6 @@ export default class Canvas {
           ans.setPxl(x, y, shader(x, y));
         }
       }
-      return this;
-    }
-
-    ans.setPxl = (x, y, color) => {
-      const w = this._width;
-      const [i, j] = this.canvas2grid(x, y);
-      let index = 4 * (w * i + j);
-      this._image[index] = this._image[index] + (color.red * MAX_8BIT - this._image[index]) / it;
-      this._image[index + 1] = this._image[index + 1] + (color.green * MAX_8BIT - this._image[index + 1]) / it;
-      this._image[index + 2] = this._image[index + 2] + (color.blue * MAX_8BIT - this._image[index + 2]) / it;
-      this._image[index + 3] = MAX_8BIT;
-      return this;
-    }
-
-    ans.setPxlData = (index, [r, g, b]) => {
-      this._image[index] = this._image[index] + (r * MAX_8BIT - this._image[index]) / it;
-      this._image[index + 1] = this._image[index + 1] + (g * MAX_8BIT - this._image[index + 1]) / it;
-      this._image[index + 2] = this._image[index + 2] + (b * MAX_8BIT - this._image[index + 2]) / it;
-      this._image[index + 3] = MAX_8BIT;
       return ans;
     }
 
@@ -118,36 +147,32 @@ export default class Canvas {
     return ans;
   }
 
-  paint() {
-    this._ctx.putImageData(this._imageData, 0, 0);
-    return this;
-  }
-
   onMouseDown(lambda) {
-    this._canvas.addEventListener("mousedown", handleMouse(this, lambda), false);
-    this._canvas.addEventListener("touchstart", handleMouse(this, lambda), false);
+    this.canvas.addEventListener("mousedown", handleMouse(this, lambda), false);
+    this.canvas.addEventListener("touchstart", handleMouse(this, lambda), false);
     return this;
   }
 
   onMouseUp(lambda) {
-    this._canvas.addEventListener("mouseup", handleMouse(this, lambda), false);
-    this._canvas.addEventListener("touchend", handleMouse(this, lambda), false);
+    this.canvas.addEventListener("mouseup", handleMouse(this, lambda), false);
+    this.canvas.addEventListener("touchend", handleMouse(this, lambda), false);
     return this;
   }
 
   onMouseMove(lambda) {
-    this._canvas.addEventListener("mousemove", handleMouse(this, lambda), false);
-    this._canvas.addEventListener("touchmove", handleMouse(this, lambda), false);
+    this.canvas.addEventListener("mousemove", handleMouse(this, lambda), false);
+    this.canvas.addEventListener("touchmove", handleMouse(this, lambda), false);
     return this;
   }
 
   onMouseWheel(lambda) {
-    this._canvas.addEventListener("wheel", lambda, false)
+    this.canvas.addEventListener("wheel", lambda, false);
+    return this;
   }
 
   drawLine(p1, p2, shader) {
-    const w = this._width;
-    const h = this._height;
+    const w = this.width;
+    const h = this.height;
     const line = [p1, p2];
     if (line.length <= 1) return;
     const [pi, pf] = line;
@@ -159,13 +184,13 @@ export default class Canvas {
       const [x, y] = lineP.toArray();
       const j = x;
       const i = h - 1 - y;
-      const index = 4 * (i * w + j);
+      const index = CHANNELS * (i * w + j);
       const color = shader(x, y);
       if (!color) continue;
-      this._image[index] = color.red * MAX_8BIT;
-      this._image[index + 1] = color.green * MAX_8BIT;
-      this._image[index + 2] = color.blue * MAX_8BIT;
-      this._image[index + 3] = 255;
+      this.image[index] = color.red;
+      this.image[index + 1] = color.green;
+      this.image[index + 2] = color.blue;
+      this.image[index + 3] = color.alpha;
     }
     return this;
   }
@@ -189,46 +214,19 @@ export default class Canvas {
     this._image = this._imageData.data;
   }
 
-  startVideoRecorder() {
-    let responseBlob;
-    const canvasSnapshots = [];
-    const stream = this._canvas.captureStream();
-    const recorder = new MediaRecorder(stream);
-    recorder.addEventListener("dataavailable", e => canvasSnapshots.push(e.data));
-    recorder.start();
-    recorder.onstop = () => (responseBlob = new Blob(canvasSnapshots, { type: 'video/webm' }));
-    return {
-      stop: () => new Promise((re) => {
-        recorder.stop();
-        setTimeout(() => re(responseBlob));
-      })
-    };
-  }
-
   grid2canvas(i, j) {
     const h = this.height;
     const x = j;
     const y = h - 1 - i;
     return [x, y]
-  }
+}
 
-  canvas2grid(x, y) {
-    const h = this._height;
+canvas2grid(x, y) {
+    const h = this.height;
     const j = Math.floor(x);
     const i = Math.floor(h - 1 - y);
     return [i, j];
-  }
-
-  setPxl(x, y, color) {
-    const w = this._width;
-    const [i, j] = this.canvas2grid(x, y);
-    let index = 4 * (w * i + j);
-    this._image[index] = color.red * MAX_8BIT;
-    this._image[index + 1] = color.green * MAX_8BIT;
-    this._image[index + 2] = color.blue * MAX_8BIT;
-    this._image[index + 3] = MAX_8BIT;
-    return this;
-  }
+}
 
   getPxl(x, y) {
     const w = this._width;
@@ -240,11 +238,22 @@ export default class Canvas {
     return Color.ofRGBRaw(this._image[index], this._image[index + 1], this._image[index + 2], this._image[index + 3]);
   }
 
-  setPxlData(index, [r, g, b]) {
-    this._image[index] = r * MAX_8BIT;
-    this._image[index + 1] = g * MAX_8BIT;
-    this._image[index + 2] = b * MAX_8BIT;
-    this._image[index + 3] = MAX_8BIT;
+  setPxl(x, y, color) {
+    const w = this.width;
+    const [i, j] = this.canvas2grid(x, y);
+    let index = CHANNELS * (w * i + j);
+    this.image[index] = color.red;
+    this.image[index + 1] = color.green;
+    this.image[index + 2] = color.blue;
+    this.image[index + 3] = color.alpha;
+    return this;
+  }
+
+  setPxlData(index, color) {
+    this.image[index] = color.red;
+    this.image[index + 1] = color.green;
+    this.image[index + 2] = color.blue;
+    this.image[index + 3] = color.alpha;
     return this;
   }
 
@@ -262,28 +271,6 @@ export default class Canvas {
     return new Canvas(canvas);
   }
 
-  static ofDOM(canvasDOM) {
-    return new Canvas(canvasDOM);
-  }
-
-  static ofCanvas(canvas) {
-    return new Canvas(canvas._canvas);
-  }
-
-  static ofUrl(url) {
-    return new Promise((resolve) => {
-      const img = document.createElement("img");
-      img.src = url;
-      img.onload = function () {
-        const canvas = document.createElement("canvas");
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0);
-        resolve(Canvas.ofDOM(canvas));
-      };
-    });
-  }
 }
 
 //========================================================================================
@@ -297,11 +284,45 @@ function handleMouse(canvas, lambda) {
   return event => {
     const h = canvas.height;
     const w = canvas.width;
-    const rect = canvas._canvas.getBoundingClientRect();
+    const rect = canvas.canvas.getBoundingClientRect();
     // different coordinates from canvas DOM image data
     const mx = (event.clientX - rect.left) / rect.width, my = (event.clientY - rect.top) / rect.height;
     const x = Math.floor(mx * w);
     const y = Math.floor(h - 1 - my * h);
     return lambda(x, y);
   }
+}
+
+function parallelWorkers(tela, lambda, dependencies = [], vars = []) {
+  // lazy loading workers
+  if (WORKERS.length === 0) {
+    WORKERS = [...Array(NUMBER_OF_CORES)].map(() => new MyWorker(`/src/Tela/CanvasWorker.js`));
+  }
+  const w = tela.width;
+  const h = tela.height;
+  return WORKERS.map((worker, k) => {
+    return new Promise((resolve) => {
+      worker.onMessage(message => {
+        const { image, startRow, endRow, } = message;
+        let index = 0;
+        const startIndex = CHANNELS * w * startRow;
+        const endIndex = CHANNELS * w * endRow;
+        for (let i = startIndex; i < endIndex; i += CHANNELS) {
+          tela.setPxlData(i, Color.ofRGB(image[index++], image[index++], image[index++], image[index++]));
+        }
+        resolve();
+      })
+      const ratio = Math.floor(h / WORKERS.length);
+      const message = {
+        __vars: vars,
+        __lambda: lambda.toString(),
+        __width: w,
+        __height: h,
+        __startRow: k * ratio,
+        __endRow: Math.min(h, (k + 1) * ratio),
+        __dependencies: dependencies.map(d => d.toString()),
+      };
+      worker.postMessage(message)
+    });
+  })
 }

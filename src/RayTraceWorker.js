@@ -3,7 +3,7 @@ import Scene from "./Scene.js"
 import Vec from "./Vector.js"
 import Color from "./Color.js"
 import Ray from "./Ray.js"
-import { rayTrace, trace, traceWithCache } from "./RayTrace.js";
+import { rayTrace } from "./RayTrace.js";
 
 function main(inputs) {
     const {
@@ -26,9 +26,7 @@ function main(inputs) {
     const variance = params.variance;
     const gamma = params.gamma;
     const invSamples = (bounces || 1) / samplesPerPxl;
-    const isImportanceSampling = params.importanceSampling;
-    const useCache = params.useCache;
-    // the order does matter
+    // the order does matters
     for (let y = startRow; y < endRow; y++) {
         for (let x = 0; x < width; x++) {
             let c = Color.BLACK;
@@ -37,12 +35,7 @@ function main(inputs) {
                 const epsilon = Vec.RANDOM(3).scale(variance);
                 const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
                 const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
-                if (useCache) c = c.add(traceWithCache(r, scene, { bounces }));
-                else {
-                    c = isImportanceSampling ?
-                        c.add(rayTrace(r, scene, { bounces })) :
-                        c.add(trace(r, scene, { bounces }))
-                }
+                c = c.add(rayTrace(r, scene, params));
             }
             const color = c.scale(invSamples).toGamma(gamma);
             image[index++] = color.red;
