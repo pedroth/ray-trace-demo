@@ -1,4 +1,5 @@
 import Box from "./Box.js";
+import Color from "./Color.js";
 import { CHANNELS, MAX_8BIT } from "./Constants.js";
 import { Vec2 } from "./Vector.js";
 
@@ -31,8 +32,7 @@ export default class Canvas {
     return this;
   }
 
-  fill(color) {
-    if (!color) return;
+  fill(color = Color.BLACK) {
     const n = this.image.length;
     for (let k = 0; k < n; k += CHANNELS) {
       this.image[k] = color.red;
@@ -219,14 +219,14 @@ export default class Canvas {
     const x = j;
     const y = h - 1 - i;
     return [x, y]
-}
+  }
 
-canvas2grid(x, y) {
+  canvas2grid(x, y) {
     const h = this.height;
     const j = Math.floor(x);
     const i = Math.floor(h - 1 - y);
     return [i, j];
-}
+  }
 
   getPxl(x, y) {
     const w = this._width;

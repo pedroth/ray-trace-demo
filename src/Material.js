@@ -1,14 +1,14 @@
 import { clamp } from "./Math.js";
 import Ray from "./Ray.js";
-import Vec from "./Vector.js";
+import { randomPointInSphere } from "./Utils.js";
 
 export const MATERIALS = {
-    Diffuse:  Diffuse,
-    Metallic:  Metallic,
-    Alpha:  Alpha,
+    Diffuse: Diffuse,
+    Metallic: Metallic,
+    Alpha: Alpha,
     DiElectric: DiElectric
 }
-const MATERIAL_NAMES = Object.keys(MATERIALS).reduce((e,x) => ({[x]: x, ...e}), {});
+const MATERIAL_NAMES = Object.keys(MATERIALS).reduce((e, x) => ({ [x]: x, ...e }), {});
 
 export function Diffuse() {
     return {
@@ -87,15 +87,4 @@ export function DiElectric(indexOfRefraction = 1.0) {
             return Ray(inRay.trace(t + 1e-2), vOut);
         }
     }
-}
-
-function randomPointInSphere() {
-    let randomInSphere = undefined;
-    while (true) {
-        const random = Vec.RANDOM(3).map(x => 2 * x - 1);
-        if (random.squareLength() >= 1) continue;
-        randomInSphere = random.normalize();
-        break;
-    }
-    return randomInSphere;
 }

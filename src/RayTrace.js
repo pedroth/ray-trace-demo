@@ -15,9 +15,9 @@ export function rayTrace(ray, scene, options) {
     let finalC = rayTrace(
         r,
         scene,
-        { bounces: bounces - 1 }
+        { ...options, bounces: bounces - 1 }
     );
-    const dot = Math.max(0, r.dir.dot(e.normalToPoint(r.init)));
+    const dot = Math.max(0, r.dir.dot(e.normalToPoint(p)));
     const finalColor = e.emissive ? color.scale(dot).add(color.mul(finalC)) : color.mul(finalC);
     cache.set(p, finalColor);
     return finalColor;

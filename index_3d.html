@@ -27,6 +27,7 @@
     import Triangle from "./src/Triangle.js";
     import Sphere from "./src/Sphere.js";
     import Vec, { Vec2, Vec3 } from "./src/Vector.js";
+    import { randomPointInSphere } from "./src/Utils.js";
     import Ray from "./src/Ray.js";
     import { DiElectric, Metallic, Alpha } from "./src/Material.js";
     import { Pane } from "./tweakpane-4.0.4.min.js";
@@ -228,15 +229,10 @@
         )
 
         function debugTrace(p, n, bounces) {
-            if (bounces <= 0) return;
+            if (n === undefined) exposedCanvas.fill();
+            if (bounces <= 0) return exposedCanvas.paint();
             function scatter() {
-                let randomInSphere = undefined;
-                while (true) {
-                    const random = Vec.RANDOM(3).map(x => 2 * x - 1);
-                    if (random.squareLength() >= 1) continue;
-                    randomInSphere = random.normalize();
-                    break;
-                }
+                let randomInSphere = randomPointInSphere();
                 if (!n) return randomInSphere;
                 if (randomInSphere.dot(n) >= 0) return randomInSphere;
                 return randomInSphere.scale(-1);
@@ -244,15 +240,15 @@
             const v = scatter();
             const hit = scene.interceptWith(Ray(p, v))
             if (!hit) {
-                if (n) camera.rasterLine({ canvas, elem: { color: Color.ofRGB(1, 0, 1), positions: [p, p.add(v.scale(2))] } });
+                if (n) camera.rasterLine({ canvas: exposedCanvas, elem: { color: Color.ofRGB(1, 0, 1), positions: [p, p.add(v.scale(2))] } });
                 return;
             }
             const [hitP, elem] = hit;
             if (elem.emissive) {
-                camera.rasterLine({ canvas, elem: { color: elem.color || elem.colors[0], positions: [p, hitP] } });
+                camera.rasterLine({ canvas: exposedCanvas, elem: { color: elem.color || elem.colors[0], positions: [p, hitP] } });
                 return;
             }
-            camera.rasterLine({ canvas, elem: { color: elem.color || elem.colors[0], positions: [p, hitP] } });
+            camera.rasterLine({ canvas: exposedCanvas, elem: { color: elem.color || elem.colors[0], positions: [p, hitP] } });
             let normal = elem.normalToPoint(hitP);
             normal = v.dot(normal) <= 0 ? normal : normal.scale(-1);
             debugTrace(hitP, normal, bounces - 1);
@@ -265,14 +261,16 @@
             if (PARAMS.squareRender) camera.squareShot(scene, PARAMS).to(exposedCanvas);
             else if (PARAMS.useParallel) await camera.parallelShot(scene, PARAMS).to(exposedCanvas);
             else camera.sceneShot(scene, PARAMS).to(exposedCanvas);
-            // debugTrace(Vec3(1.5, 1.5, 1), undefined, 10);
+            // debugTrace(Vec3(1.5, 1.5, 1.5), undefined, 10);
             document.title = `Ray Trace, FPS: ${((1 / dt).toFixed(2))}`;
             requestAnimationFrame(() => play({
                 oldT: newT,
                 time: time + dt,
             }));
         }
-        requestAnimationFrame(() => play({ oldT: new Date().getTime(), time: 0 }))
+        requestAnimationFrame(() => play({ oldT: new Date().getTime(), time: 0 }));
+
+
         const PARAMS = localStorage.getItem("PARAMS") ?? {
             samplesPerPxl: 1,
             bounces: 5,
@@ -287,7 +285,7 @@
         };
         // gui
         const pane = new Pane({ title: "Parameters" });
-        pane.addBinding(PARAMS, "samplesPerPxl", { min: 0, max: 10, step: 1 });
+        pane.addBinding(PARAMS, "samplesPerPxl", { min: 1, max: 10, step: 1 });
         pane.addBinding(PARAMS, "bounces", { min: 0, max: 10, step: 1 });
         pane.addBinding(PARAMS, "variance", { min: 0, max: 0.1, step: 0.001 });
         pane.addBinding(PARAMS, "gamma", { min: 0, max: 1, step: 0.01 });
@@ -301,26 +299,31 @@
             }
         });
         let squareFolder;
+        function createSquareFolder() {
+            if (PARAMS.squareRender && !squareFolder) {
+                squareFolder = pane.addFolder({
+                    title: 'Square Render',
+                    expanded: true,
+                });
+                squareFolder.addBinding(PARAMS, "budget", { min: 1000, max: 20000, step: 1000 });
+            }
+        }
+        createSquareFolder();
         select.on("change", (ev) => {
             if (ev.value === "parallel") {
                 PARAMS.useParallel = true;
                 PARAMS.squareRender = false;
-                pane.remove(squareFolder);
+                squareFolder && pane.remove(squareFolder);
+                squareFolder = undefined;
             } else if (ev.value === "square") {
                 PARAMS.squareRender = true;
                 PARAMS.useParallel = false;
-                if (!squareFolder) {
-                    squareFolder = pane.addFolder({
-                        title: 'Square Render',
-                        expanded: true,
-                    });
-                    squareFolder.addBinding(PARAMS, "squareRender", { label: "square" });
-                    squareFolder.addBinding(PARAMS, "budget", { min: 1000, max: 20000, step: 1000 });
-                }
+                createSquareFolder()
             } else {
                 PARAMS.useParallel = false;
                 PARAMS.squareRender = false;
-                pane.remove(squareFolder);
+                squareFolder && pane.remove(squareFolder);
+                squareFolder = undefined;
             }
         })
         const btn = pane.addButton({ title: 'fullscreen' });

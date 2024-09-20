@@ -4,6 +4,7 @@ import Vec from "./Vector.js"
 import Color from "./Color.js"
 import Ray from "./Ray.js"
 import { rayTrace } from "./RayTrace.js";
+import { randomPointInSphere } from "./Utils.js";
 
 function main(inputs) {
     const {
@@ -32,9 +33,9 @@ function main(inputs) {
             let c = Color.BLACK;
             const ray = rayGen(x, height - 1 - y)
             for (let i = 0; i < samplesPerPxl; i++) {
-                const epsilon = Vec.RANDOM(3).scale(variance);
-                const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
-                const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
+                const epsilon = randomPointInSphere().scale(variance);
+                const epsilonOrtho = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
+                const r = Ray(ray.init, ray.dir.add(epsilonOrtho).normalize());
                 c = c.add(rayTrace(r, scene, params));
             }
             const color = c.scale(invSamples).toGamma(gamma);

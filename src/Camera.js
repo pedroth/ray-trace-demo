@@ -3,6 +3,7 @@ import { CHANNELS } from "./Constants.js";
 import MyWorker from "./parallel.js";
 import Ray from "./Ray.js";
 import { rayTrace } from "./RayTrace.js";
+import { randomPointInSphere } from "./Utils.js";
 import Vec, { Vec2, Vec3 } from "./Vector.js";
 
 const PARAMS = {
@@ -167,9 +168,9 @@ export default class Camera {
     const lambda = ray => {
       let c = Color.BLACK;
       for (let i = 0; i < samplesPerPxl; i++) {
-        const epsilon = Vec.RANDOM(3).scale(variance);
-        const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
-        const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
+        const epsilon = randomPointInSphere().scale(variance);
+        const epsilonOrtho = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
+        const r = Ray(ray.init, ray.dir.add(epsilonOrtho).normalize());
         c = c.add(rayTrace(r, scene, params));
       }
       return c.scale(invSamples).toGamma(gamma);
@@ -203,9 +204,9 @@ export default class Camera {
           )
             .normalize();
           const ray = Ray(this.position, dir);
-          const epsilon = Vec.RANDOM(3).scale(variance);
-          const epsilonOrto = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
-          const r = Ray(ray.init, ray.dir.add(epsilonOrto).normalize());
+          const epsilon = randomPointInSphere().scale(variance);
+          const epsilonOrtho = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
+          const r = Ray(ray.init, ray.dir.add(epsilonOrtho).normalize());
           let c = Color.BLACK;
           c = c.add(rayTrace(r, scene, params));
           canvas.drawSquare(
