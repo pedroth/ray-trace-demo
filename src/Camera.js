@@ -1,6 +1,6 @@
 import Color from "./Color.js";
 import { CHANNELS } from "./Constants.js";
-import MyWorker from "./parallel.js";
+import MyWorker from "./Utils.js";
 import Ray from "./Ray.js";
 import { rayTrace } from "./RayTrace.js";
 import { randomPointInSphere } from "./Utils.js";
