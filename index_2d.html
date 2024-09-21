@@ -135,6 +135,22 @@
             const hit = sdfIntercept(init, dir, line);
             if (hit) return [...hit, line.normal(hit[1])];
         }
+
+        line.serialize = () => ({
+            type: "line",
+            name, positions: positions.map(p => p.toArray()),
+            colors: color.toArray(),
+            radius,
+            emissive
+        })
+
+        line.deserialize = (json) => Line({
+            name: json.name,
+            radius: json.radius,
+            emissive: json.emissive,
+            positions: json.positions.map(p => Vec2(p[0], p[1])),
+            colors: Color.RGB(...json.color)
+        })
         return line;
     }
     function Point({ name, position, color, radius, emissive }) {
@@ -159,9 +175,18 @@
             const hit = sdfIntercept(init, dir, point);
             if (hit) return [...hit, point.normal(hit[1])];
         }
+
+        point.serialize = () => ({ type: "point", name, position: position.toArray(), color: color.toArray(), radius, emissive })
+        point.deserialize = (json) => Point({
+            name: json.name,
+            position: Vec2(json.position[0], json.position[1]),
+            color: Color.ofRGB(...json.color),
+            radius: json.radius,
+            emissive: json.emissive
+        });
         return point;
     }
-    function intersectScene(init, dir) {
+    function intersectScene(init, dir, scene) {
         let closest = undefined;
         let minDist = Number.MAX_VALUE;
         for (let i = 0; i < scene.length; i++) {
@@ -177,7 +202,8 @@
         }
         return closest;
     }
-    function rayTrace(x, normal, options) {
+
+    function rayTrace(x, normal, options, scene) {
         const { bounces, importanceSampling, useCache } = options;
         if (bounces < 0) return importanceSampling ? colorFromLight(x, normal) : Color.BLACK;
         const theta = 2 * Math.PI * Math.random();
@@ -185,14 +211,14 @@
         if (normal && v.dot(normal) < 0) {
             v = v.scale(-1);
         }
-        const hit = intersectScene(x, v);
+        const hit = intersectScene(x, v, scene);
         if (!hit) return Color.BLACK;
         const [p, n, e] = hit;
         const cachedColor = cache.get(p);
         if (useCache && cachedColor) return cachedColor;
         const color = e.color;
         if (e.emissive) return color;
-        let finalC = rayTrace(p, n, { ...options, bounces: bounces - 1 });
+        let finalC = rayTrace(p, n, { ...options, bounces: bounces - 1 }, scene);
         finalC = finalC.mul(color);
         cache.set(p, finalC);
         return finalC;
@@ -282,33 +308,53 @@
         const invSamples = (bounces || 1) / samplesPerPxl;
         return exposedCanvas
             .map((x, y) => {
-                const px = scale * (2 * (x / w) - 1) +  center.x;
-                const py = scale * (2 * (y / h) - 1) +  center.y;
+                const px = scale * (2 * (x / w) - 1) + center.x;
+                const py = scale * (2 * (y / h) - 1) + center.y;
                 const p = Vec2(px, py);
                 let c = Color.BLACK;
                 for (let i = 0; i < samplesPerPxl; i++) {
                     const theta = 2 * Math.PI * Math.random();
                     let v = Vec2(Math.cos(theta), Math.sin(theta));
                     const epsilon = v.scale(variance);
-                    c = c.add(rayTrace(p.add(epsilon), undefined, params));
+                    c = c.add(rayTrace(p.add(epsilon), undefined, params, scene));
                 }
                 return c.scale(invSamples);
             })
     }
 
+    let isFirstParallel = true;
     function renderParallel(params) {
-        const { gamma, bounces, importanceSampling } = params;
-        return exposedCanvas
-            .mapParallel((x, y) => {
-                const px = scale * (2 * (x - center.x) / w - 1);
-                const py = scale * (2 * (y - center.y) / h - 1);
-                const p = Vec2(px, py);
-                let c;
-                if (useCache) c = traceCache(p, undefined, bounces)
-                else c = importanceSampling ?
-                    lightTrace(p, undefined, bounces) :
-                    rayTrace(p, undefined, bounces);
-            })
+        return canvas
+            .mapParallel((x, y, vars, memory) => {
+                const { scale, center, w, h, params } = vars;
+                const { gamma, bounces, importanceSampling, samplesPerPxl, variance } = params;
+                const { scene: serializedScene } = memory;
+                let deserializeScene;
+                if (serializedScene) {
+                    deserializeScene = serializedScene
+                        .map(elem => {
+                            if ("point" === elem.type) {
+                                return Point().deserialize(elem);
+                            } else if ("line" === elem.type) {
+                                return Line().deserialize(elem);
+                            }
+                        })
+                }
+                if(deserializeScene) {
+                    const px = scale * (2 * (x / w) - 1) + center[0];
+                    const py = scale * (2 * (y / h) - 1) + center[1];
+                    const p = Vec2(px, py);
+                    let c = Color.BLACK;
+                    for (let i = 0; i < samplesPerPxl; i++) {
+                        const theta = 2 * Math.PI * Math.random();
+                        let v = Vec2(Math.cos(theta), Math.sin(theta));
+                        const epsilon = v.scale(variance);
+                        c = c.add(rayTrace(p.add(epsilon), undefined, params, deserializeScene));
+                    }
+                    return c.scale(invSamples);
+                }
+                return Color.random();
+            }, [rayTrace, intersectScene, Line, Point]).run({ center: center.toArray(), scale, w, h, params }, { scene: scene.map(s => s.serialize()) })
     }
 
     function squareRender(params) {
@@ -332,7 +378,7 @@
             p = p.add(epsilon)
 
             let c = Color.BLACK;
-            c = c.add(rayTrace(p, undefined, params));
+            c = c.add(rayTrace(p, undefined, params, scene));
 
             p = p.sub(center).scale(1 / scale);
             p = p.add(Vec2(1, 1)).scale(0.5)

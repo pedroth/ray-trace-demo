@@ -1,17 +1,10 @@
 import Vec, { Vec3, Vec2 } from "./Vector.js"
 import Color from "./Color.js"
 import Ray from "./Ray.js"
+import { memoize } from "./Utils.js"
+import { CHANNELS } from "./Constants.js";
 
-function memoize(func) {
-    const cache = {}
-    return (...args) => {
-        const key = JSON.stringify(args.map(x => typeof x === "object" ? JSON.stringify(x) : x.toString()));
-        if (key in cache) return cache[key];
-        const ans = func(...args);
-        cache[key] = ans;
-        return ans;
-    }
-}
+let memory = {}
 
 async function main(inputs) {
     const {
@@ -22,7 +15,9 @@ async function main(inputs) {
         __startRow,
         __endRow,
         __dependencies,
+        ___memory,
     } = inputs;
+    memory = { ...___memory };
     const bufferSize = __width * (__endRow - __startRow + 1) * CHANNELS;
     const image = new Float32Array(bufferSize);
     let index = 0;
@@ -31,7 +26,7 @@ async function main(inputs) {
     for (let i = __startRow; i < __endRow; i++) {
         for (let x = 0; x < __width; x++) {
             const y = __height - 1 - i;
-            const color = func(x, y, __vars);
+            const color = func(x, y, __vars, memory);
             if (!color) continue;
             image[index++] = color.red;
             image[index++] = color.green;

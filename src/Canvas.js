@@ -1,10 +1,11 @@
 import Box from "./Box.js";
 import Color from "./Color.js";
 import { CHANNELS, MAX_8BIT } from "./Constants.js";
+import MyWorker from "./Utils.js";
 import { Vec2 } from "./Vector.js";
 
 const NUMBER_OF_CORES = navigator.hardwareConcurrency;
-const WORKERS = [];
+let WORKERS = [];
 
 export default class Canvas {
 
@@ -65,11 +66,10 @@ export default class Canvas {
     return this.paint();
   }
 
-
   mapParallel(lambda, dependencies = []) {
     return {
-      run: (vars = {}) => {
-        const workersPromises = parallelWorkers(this, lambda, dependencies, vars);
+      run: (vars = {}, memory = {}) => {
+        const workersPromises = parallelWorkers(this, lambda, dependencies, vars, memory);
         return Promise
           .allSettled(workersPromises)
           .then(() => {
@@ -293,10 +293,11 @@ function handleMouse(canvas, lambda) {
   }
 }
 
-function parallelWorkers(tela, lambda, dependencies = [], vars = []) {
+let isFirstTime = true;
+function parallelWorkers(tela, lambda, dependencies = [], vars = {}, memory = {}) {
   // lazy loading workers
   if (WORKERS.length === 0) {
-    WORKERS = [...Array(NUMBER_OF_CORES)].map(() => new MyWorker(`/src/Tela/CanvasWorker.js`));
+    WORKERS = [...Array(NUMBER_OF_CORES)].map(() => new MyWorker(`/src/CanvasWorker.js`));
   }
   const w = tela.width;
   const h = tela.height;
@@ -321,8 +322,9 @@ function parallelWorkers(tela, lambda, dependencies = [], vars = []) {
         __startRow: k * ratio,
         __endRow: Math.min(h, (k + 1) * ratio),
         __dependencies: dependencies.map(d => d.toString()),
+        __memory: memory
       };
-      worker.postMessage(message)
+        worker.postMessage(message)
     });
   })
 }
