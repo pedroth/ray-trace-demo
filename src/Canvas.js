@@ -112,6 +112,19 @@ export default class Canvas {
       return this.paint();
     }
 
+    ans.mapParallel = (lambda, dependencies = []) => {
+      return {
+        run: (vars = {}, memory = {}) => {
+          const workersPromises = parallelWorkers(ans, lambda, dependencies, vars, memory);
+          return Promise
+            .allSettled(workersPromises)
+            .then(() => {
+              return ans.paint();
+            })
+        }
+      }
+    }
+
     ans.setPxl = (x, y, color) => {
       const w = this.width;
       const [i, j] = this.canvas2grid(x, y);
@@ -293,7 +306,6 @@ function handleMouse(canvas, lambda) {
   }
 }
 
-let isFirstTime = true;
 function parallelWorkers(tela, lambda, dependencies = [], vars = {}, memory = {}) {
   // lazy loading workers
   if (WORKERS.length === 0) {
@@ -324,7 +336,7 @@ function parallelWorkers(tela, lambda, dependencies = [], vars = {}, memory = {}
         __dependencies: dependencies.map(d => d.toString()),
         __memory: memory
       };
-        worker.postMessage(message)
+      worker.postMessage(message)
     });
   })
 }
