@@ -311,7 +311,7 @@ function parallelWorkers(tela, lambda, dependencies = [], vars = {}, memory = {}
   if (WORKERS.length === 0) {
     // needs to be here...
     const isGithub = typeof window !== "undefined" && (window.location.host || window.LOCATION_HOST) === "pedroth.github.io";
-    const SOURCE = isGithub ? "/ray-tracer-demo" : ""
+    const SOURCE = isGithub ? "/ray-trace-demo" : ""
     WORKERS = [...Array(NUMBER_OF_CORES)].map(() => new MyWorker(`${SOURCE}/src/CanvasWorker.js`));
   }
   const w = tela.width;
