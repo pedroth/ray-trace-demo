@@ -309,7 +309,10 @@ function handleMouse(canvas, lambda) {
 function parallelWorkers(tela, lambda, dependencies = [], vars = {}, memory = {}) {
   // lazy loading workers
   if (WORKERS.length === 0) {
-    WORKERS = [...Array(NUMBER_OF_CORES)].map(() => new MyWorker(`/src/CanvasWorker.js`));
+    // needs to be here...
+    const isGithub = typeof window !== "undefined" && (window.location.host || window.LOCATION_HOST) === "pedroth.github.io";
+    const SOURCE = isGithub ? "/ray-tracer-demo" : ""
+    WORKERS = [...Array(NUMBER_OF_CORES)].map(() => new MyWorker(`${SOURCE}/src/CanvasWorker.js`));
   }
   const w = tela.width;
   const h = tela.height;
