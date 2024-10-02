@@ -27,8 +27,9 @@
     import { Pane } from "./tweakpane-4.0.4.min.js";
     import localStorage from "./src/LocalStorage.js"
 
-    const w = 640 / 2;
-    const h = 480 / 2;
+    const w = 640/2;
+    const h = 480/2;
+    const size = Vec2(w, h);
     const canvas = Canvas.ofSize(w, h);
     let exposedCanvas = canvas.exposure();
     function lightColorCache(gridSpace) {
@@ -63,14 +64,22 @@
     let pointer = mouse;
     let scale = 5;
     let center = Vec2();
+    let path = [];
+    let isNewScene = true;
     canvas.onMouseDown((x, y) => {
         mousedown = true;
         mouse = Vec2(x, y);
-
+        path.push(mouse.clone())
     })
     canvas.onMouseUp(() => {
         mousedown = false;
         mouse = Vec2();
+        let id = scene.length;
+        for (let i = 0; i < path.length - 1; i++) {
+            scene.push(Line({ name: `id_${id}`, positions: [path[i].div(size).map(x => 2 * x - 1).scale(scale).add(center), path[i + 1].div(size).map(x => 2 * x - 1).scale(scale).add(center)], radius: 0.1, emissive: true, color: Color.WHITE }))
+        }
+        isNewScene = true;
+        path = [];
     })
     canvas.onMouseMove((x, y) => {
         const newMouse = Vec2(x, y);
@@ -79,12 +88,13 @@
             return;
         }
         const [dx, dy] = newMouse.sub(mouse).toArray();
-        center = center.add(Vec2(dx, dy).scale(-0.01));
+        path.push(newMouse.clone());
+        // center = center.add(Vec2(dx, dy).scale(-0.01));
         mouse = newMouse;
         exposedCanvas = canvas.exposure();
     })
     canvas.onMouseWheel(({ deltaY }) => {
-        scale = scale + deltaY * 0.001;
+        // scale = scale + deltaY * 0.001;
         exposedCanvas = canvas.exposure();
     })
     function sdfIntercept(init, dir, element) {
@@ -284,14 +294,7 @@
         debugTrace(p, n, bounces - 1);
     }
 
-    const scene = [
-        Point({ name: "light", position: Vec2(), radius: 0.1, emissive: true, color: Color.WHITE }),
-        Line({ name: "left", positions: [Vec2(-1.5, -1.5), Vec2(-1.5, 1.5)], radius: 0.1, color: Color.RED }),
-        Line({ name: "right", positions: [Vec2(1.5, 1.5), Vec2(1.5, -1.5)], radius: 0.1, color: Color.GREEN }),
-        Line({ name: "top", positions: [Vec2(-1.5, 1.5), Vec2(1.5, 1.5)], radius: 0.1, color: Color.WHITE }),
-        Line({ name: "wall-1", positions: [Vec2(-0.5, -0.5), Vec2(0, -0.5)], radius: 0.1, color: Color.BLUE }),
-        Line({ name: "wall-2", positions: [Vec2(0.5, -1), Vec2(1.0, -1)], radius: 0.1, color: Color.BLUE }),
-    ]
+    let scene = []
 
     function debug() {
         exposedCanvas.map((x, y) => Color.BLACK);
@@ -326,14 +329,16 @@
                 return c.scale(invSamples);
             })
     }
-    let isFirstTime = true;
+
     function renderParallel(params) {
+        const memory = isNewScene ? { scene: scene.map(s => s.serialize()), isNewScene } : {isNewScene: false}
+        isNewScene = false;
         return exposedCanvas
             .mapParallel((x, y, vars, memory) => {
                 const { scale, center, w, h, params } = vars;
                 const { gamma, bounces, importanceSampling, samplesPerPxl, variance } = params;
-                let { scene: serializedScene, deserializedScene } = memory;
-                if (!deserializedScene && serializedScene) {
+                let { scene: serializedScene, deserializedScene, isNewScene} = memory;
+                if (isNewScene && serializedScene) {
                     memory.deserializedScene = serializedScene
                         .map(elem => {
                             if ("point" === elem.type) {
@@ -364,9 +369,8 @@
             )
             .run(
                 { center: center.toArray(), scale, w, h, params },
-                isFirstTime ? { scene: scene.map(s => s.serialize()) } :  {}
+                memory
             )
-            isFirstTime = false;
     }
 
     function squareRender(params) {

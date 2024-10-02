@@ -17,7 +17,7 @@ async function main(inputs) {
         __dependencies,
         __memory,
     } = inputs;
-    memory = { ...__memory };
+    memory = {...memory, ...__memory };
     const bufferSize = __width * (__endRow - __startRow + 1) * CHANNELS;
     const image = new Float32Array(bufferSize);
     let index = 0;
