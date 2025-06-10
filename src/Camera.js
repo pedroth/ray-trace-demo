@@ -216,7 +216,6 @@ export default class Camera {
           );
           // canvas.setPxl(xp * w, yp * h, c);
         }
-        canvas.paint();
         return canvas;
       }
     }

@@ -63,7 +63,7 @@ export default class Canvas {
       this.image[k + 2] = color.blue;
       this.image[k + 3] = color.alpha;
     }
-    return this.paint();
+    return this;
   }
 
   mapParallel(lambda, dependencies = []) {
@@ -73,7 +73,7 @@ export default class Canvas {
         return Promise
           .allSettled(workersPromises)
           .then(() => {
-            return this.paint();
+            return this;
           })
       }
     }
@@ -109,7 +109,7 @@ export default class Canvas {
         this.image[k + 3] = this.image[k + 3] + (color.alpha - this.image[k + 3]) / it;
       }
       if (it < time) it++
-      return this.paint();
+      return this;
     }
 
     ans.mapParallel = (lambda, dependencies = []) => {
@@ -119,7 +119,7 @@ export default class Canvas {
           return Promise
             .allSettled(workersPromises)
             .then(() => {
-              return ans.paint();
+              return ans;
             })
         }
       }
@@ -157,6 +157,55 @@ export default class Canvas {
       if (it < time) it++
       return this.paint();
     }
+
+    ans.reset = () => {
+      it = 1;
+      return ans;
+    }
+    return ans;
+  }
+
+
+  gradual(size=3, time=Number.MAX_VALUE) {
+    let it = 1;
+    let t_0 = 0;
+    const nn = size * size;
+
+    const ans = {};
+    // chatGPT
+    for (let key of Object.getOwnPropertyNames(Object.getPrototypeOf(this))) {
+      const descriptor = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(this), key);
+      if (descriptor && typeof descriptor.value === 'function') {
+        ans[key] = descriptor.value.bind(this);
+      }
+    }
+    // end of chatGPT
+    ans.width = this.width;
+    ans.height = this.height;
+    ans.map = (lambda) => {
+      const n = this.image.length;
+      const w = this.width;
+      const h = this.height;
+      for (let k = 0; k < n; k += 4) {
+        const i = Math.floor(k / (4 * w));
+        const j = Math.floor((k / 4) % w);
+        const x = j;
+        const y = h - 1 - i;
+        const i_0 = x % size;
+        const j_0 = y % size;
+        if((size * j_0 + i_0) !== t_0) continue;
+        const color = lambda(x, y);
+        if (!color) continue;
+        this.image[k] = this.image[k] + (color.red - this.image[k]) / it;
+        this.image[k + 1] = this.image[k + 1] + (color.green - this.image[k + 1]) / it;
+        this.image[k + 2] = this.image[k + 2] + (color.blue - this.image[k + 2]) / it;
+        this.image[k + 3] = this.image[k + 3] + (color.alpha - this.image[k + 3]) / it;
+      }
+      t_0 = (t_0 + 1) % nn;
+      if (it < time) it++
+      return this;
+    }
+
     return ans;
   }
 

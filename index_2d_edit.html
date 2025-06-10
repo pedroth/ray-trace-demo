@@ -27,8 +27,8 @@
     import { Pane } from "./tweakpane-4.0.4.min.js";
     import localStorage from "./src/LocalStorage.js"
 
-    const w = 640/2;
-    const h = 480/2;
+    const w = 640 / 2;
+    const h = 480 / 2;
     const size = Vec2(w, h);
     const canvas = Canvas.ofSize(w, h);
     let exposedCanvas = canvas.exposure();
@@ -91,11 +91,21 @@
         path.push(newMouse.clone());
         // center = center.add(Vec2(dx, dy).scale(-0.01));
         mouse = newMouse;
-        exposedCanvas = canvas.exposure();
+        if (PARAMS.mode === "gradual") {
+            canvas.fill();
+            exposedCanvas = canvas.gradual();
+        } else {
+            exposedCanvas.reset();
+        }
     })
     canvas.onMouseWheel(({ deltaY }) => {
         // scale = scale + deltaY * 0.001;
-        exposedCanvas = canvas.exposure();
+        if (PARAMS.mode === "gradual") {
+            canvas.fill();
+            exposedCanvas = canvas.gradual();
+        } else {
+            exposedCanvas.reset();
+        }
     })
     function sdfIntercept(init, dir, element) {
         const maxIte = 50;
@@ -218,25 +228,37 @@
         return closest;
     }
 
-    function rayTrace(x, normal, options, scene, cache) {
+      function rayTrace(x, normal, options, scene, cache) {
         const { bounces, importanceSampling, useCache } = options;
-        if (bounces < 0) return importanceSampling ? colorFromLight(x, normal, scene) : Color.BLACK;
+
+        // Try cache first
+        const cachedColor = cache.get(x);
+        if (useCache && cachedColor) return cachedColor;
+
+        // Base case: no more bounces
+        if (bounces < 0)
+            return importanceSampling ? colorFromLight(x, normal, scene) : Color.BLACK;
+
+        // Random direction, reflect if normal provided
         const theta = 2 * Math.PI * Math.random();
         let v = Vec2(Math.cos(theta), Math.sin(theta));
-        if (normal && v.dot(normal) < 0) {
-            v = v.scale(-1);
-        }
+        if (normal && v.dot(normal) < 0) v = v.scale(-1);
+
+        // Intersect scene
         const hit = intersectScene(x, v, scene);
-        if (!hit) return Color.BLACK;
+
+        // If no hit, cache and return black
+        if (!hit) return useCache ? cache.set(x, Color.BLACK) && Color.BLACK : Color.BLACK;
+
         const [p, n, e] = hit;
-        const cachedColor = cache.get(p);
-        if (useCache && cachedColor) return cachedColor;
-        const color = e.color;
-        if (e.emissive) return color;
-        let finalC = rayTrace(p, n, { ...options, bounces: bounces - 1 }, scene, cache);
-        finalC = finalC.mul(color);
-        cache.set(p, finalC);
-        return finalC;
+
+        // If emissive, cache and return color
+        if (e.emissive) return useCache ? cache.set(x, e.color) && e.color : e.color;
+
+        // Recursive ray trace
+        let finalC = rayTrace(p, n, { ...options, bounces: bounces - 1 }, scene, cache).mul(e.color);
+
+        return useCache ? cache.set(x, finalC) && finalC : finalC;
     }
     function colorFromLight(p, n, scene) {
         const emissiveElements = scene.filter((e) => e.emissive);
@@ -331,13 +353,13 @@
     }
 
     function renderParallel(params) {
-        const memory = isNewScene ? { scene: scene.map(s => s.serialize()), isNewScene } : {isNewScene: false}
+        const memory = isNewScene ? { scene: scene.map(s => s.serialize()), isNewScene } : { isNewScene: false }
         isNewScene = false;
         return exposedCanvas
             .mapParallel((x, y, vars, memory) => {
                 const { scale, center, w, h, params } = vars;
                 const { gamma, bounces, importanceSampling, samplesPerPxl, variance } = params;
-                let { scene: serializedScene, deserializedScene, isNewScene} = memory;
+                let { scene: serializedScene, deserializedScene, isNewScene } = memory;
                 if (isNewScene && serializedScene) {
                     memory.deserializedScene = serializedScene
                         .map(elem => {
@@ -416,8 +438,8 @@
         const dt = (new Date().getTime() - oldT) * 1e-3;
         document.title = `2D Light, FPS: ${((1 / dt).toFixed(2))}`;
         if (PARAMS.squareRender) squareRender(PARAMS);
-        else if (PARAMS.useParallel) await renderParallel(PARAMS);
-        else render(PARAMS);
+        else if (PARAMS.useParallel) (await renderParallel(PARAMS)).paint();
+        else render(PARAMS).paint();
         // debug();
         //scene[0].position = Vec2(Math.cos(time), Math.sin(time)); // moving light
         requestAnimationFrame(() => play({
@@ -450,9 +472,10 @@
     pane.addBinding(PARAMS, "useCache", { label: "cache" });
     const select = pane.addBinding(PARAMS, 'mode', {
         options: {
-            default: 'default',
-            parallel: 'parallel',
-            square: "square"
+            default: "default",
+            parallel: "parallel",
+            square: "square",
+            gradual: "gradual",
         }
     });
     let squareFolder;
@@ -467,22 +490,36 @@
     }
     createSquareFolder();
     select.on("change", (ev) => {
-        if (ev.value === "parallel") {
-            PARAMS.useParallel = true;
-            PARAMS.squareRender = false;
-            squareFolder && pane.remove(squareFolder);
-            squareFolder = undefined;
-        } else if (ev.value === "square") {
-            PARAMS.squareRender = true;
-            PARAMS.useParallel = false;
-            createSquareFolder();
-        } else {
-            PARAMS.useParallel = false;
-            PARAMS.squareRender = false;
-            squareFolder && pane.remove(squareFolder);
-            squareFolder = undefined;
+        switch (ev.value) {
+            case "parallel":
+                PARAMS.useParallel = true;
+                PARAMS.squareRender = false;
+                squareFolder && pane.remove(squareFolder);
+                squareFolder = undefined;
+                exposedCanvas = canvas.exposure();
+                break;
+            case "square":
+                PARAMS.squareRender = true;
+                PARAMS.useParallel = false;
+                createSquareFolder()
+                exposedCanvas = canvas.exposure();
+                break;
+            case "gradual":
+                PARAMS.useParallel = false;
+                PARAMS.squareRender = false;
+                squareFolder && pane.remove(squareFolder);
+                squareFolder = undefined;
+                exposedCanvas = canvas.gradual();
+                break;
+            default:
+                PARAMS.useParallel = false;
+                PARAMS.squareRender = false;
+                squareFolder && pane.remove(squareFolder);
+                squareFolder = undefined;
+                exposedCanvas = canvas.exposure();
+                break;
         }
-    })
+    });
     const btn = pane.addButton({ title: 'fullscreen' });
     btn.on("click", () => toggleFullScreen(canvasDom));
     pane.on('change', () => {

@@ -17,76 +17,94 @@
     </style>
 </head>
 
-<body>
+<body></body>
 
-</body>
 <script type="module">
+    // --- Imports ---
     import Canvas from "./src/Canvas.js";
     import Color from "./src/Color.js";
     import Vec, { Vec2 } from "./src/Vector.js";
     import { Pane } from "./tweakpane-4.0.4.min.js";
-    import localStorage from "./src/LocalStorage.js"
+    import localStorage from "./src/LocalStorage.js";
 
-    const w = 640 / 2;
-    const h = 480 / 2;
+    // --- Canvas Setup ---
+    const w = 320;
+    const h = 240;
     const canvas = Canvas.ofSize(w, h);
     let exposedCanvas = canvas.exposure();
     function lightColorCache(gridSpace) {
+        let ite = 1;
         const point2ColorMap = {};
         const ans = {};
         ans.hash = (p) => {
             const integerCoord = p.map(z => Math.floor(z / gridSpace));
             const h = (integerCoord.x * 92837111) ^ (integerCoord.y * 689287499);
             return Math.abs(h);
-        }
+        };
         ans.set = (p, c) => {
-            // if(c.equals(Color.BLACK)) return ans;
             const h = ans.hash(p);
             if (h in point2ColorMap) {
-                point2ColorMap[h] = point2ColorMap[h].add(c).scale(0.5);
+                const color = point2ColorMap[h]
+                // point2ColorMap[h] = color.add(c.sub(color).scale(1 / ite)).scale(0.5);
+                point2ColorMap[h] = color.add(c).scale(0.5);
             } else {
                 point2ColorMap[h] = c;
             }
+            ite++;
             return ans;
-        }
+        };
         ans.get = p => {
             const h = ans.hash(p);
             return Math.random() < 0.5 ? point2ColorMap[h] : undefined;
-        }
+            // return point2ColorMap[h];
+        };
         return ans;
     }
     let cache = lightColorCache(0.1);
 
-    // mouse handling
+    // --- Mouse Handling ---
     let mousedown = false;
     let mouse = Vec2();
     let pointer = mouse;
     let scale = 5;
     let center = Vec2();
+
     canvas.onMouseDown((x, y) => {
         mousedown = true;
         mouse = Vec2(x, y);
+    });
 
-    })
     canvas.onMouseUp(() => {
         mousedown = false;
         mouse = Vec2();
-    })
+    });
+
     canvas.onMouseMove((x, y) => {
         const newMouse = Vec2(x, y);
         pointer = newMouse;
-        if (!mousedown || newMouse.equals(mouse)) {
-            return;
-        }
+        if (!mousedown || newMouse.equals(mouse)) return;
         const [dx, dy] = newMouse.sub(mouse).toArray();
         center = center.add(Vec2(dx, dy).scale(-0.01));
         mouse = newMouse;
-        exposedCanvas = canvas.exposure();
-    })
+        if (PARAMS.mode === "gradual") {
+            canvas.fill();
+            exposedCanvas = canvas.gradual();
+        } else {
+            exposedCanvas.reset();
+        }
+    });
+
     canvas.onMouseWheel(({ deltaY }) => {
-        scale = scale + deltaY * 0.001;
-        exposedCanvas = canvas.exposure();
-    })
+        scale += deltaY * 0.001;
+        if (PARAMS.mode === "gradual") {
+            canvas.fill();
+            exposedCanvas = canvas.gradual();
+        } else {
+            exposedCanvas.reset();
+        }
+    });
+
+    // --- SDF Intercept ---
     function sdfIntercept(init, dir, element) {
         const maxIte = 50;
         const epsilon = 1e-3;
@@ -100,14 +118,13 @@
             if (d < epsilon) {
                 return [t, p.add(dir.scale(-epsilon))];
             }
-            if (d > minT) {
-                return;
-            }
+            if (d > minT) return;
             minT = d;
         }
         return;
     }
-    // scene
+
+    // --- Scene Elements ---
     function Line(args = {}) {
         const { name, positions, color, radius, emissive } = args;
         let v, n;
@@ -120,68 +137,64 @@
             const x = p.sub(line.positions[0]);
             const h = Math.min(1, Math.max(0, x.dot(v) / v.dot(v)));
             return x.sub(v.scale(h)).length() - line.radius;
-        }
-
+        };
         line.normal = (p) => {
             const epsilon = 1e-3;
             const f = line.distanceTo(p);
             const fx = line.distanceTo(p.add(Vec2(epsilon, 0)));
             const fy = line.distanceTo(p.add(Vec2(0, epsilon)));
             return Vec2((fx - f) / epsilon, (fy - f) / epsilon).normalize();
-        }
-
+        };
         line.sample = () => {
             const r = Math.random();
             return positions[0].scale(1 - r).add(positions[1].scale(r));
-        }
-
+        };
         line.interceptWith = (init, dir) => {
             const hit = sdfIntercept(init, dir, line);
             if (hit) return [...hit, line.normal(hit[1])];
-        }
-
+        };
         line.serialize = () => ({
             type: "line",
-            name, positions: positions.map(p => p.toArray()),
+            name,
+            positions: positions.map(p => p.toArray()),
             color: color.toArray(),
             radius,
             emissive
-        })
-
+        });
         line.deserialize = (json) => Line({
             name: json.name,
             radius: json.radius,
             emissive: json.emissive,
             positions: json.positions.map(p => Vec2(p[0], p[1])),
             color: Color.ofRGB(...json.color)
-        })
+        });
         return line;
     }
+
     function Point(args = {}) {
         const { name, position, color, radius, emissive } = args;
         const point = { name, position, color, radius, emissive };
-        point.distanceTo = (p) => {
-            return p.sub(point.position).length() - point.radius;
-        }
-
-        point.normal = (p) => {
-            return p.sub(point.position).normalize()
-        }
-
+        point.distanceTo = (p) => p.sub(point.position).length() - point.radius;
+        point.normal = (p) => p.sub(point.position).normalize();
         point.sample = () => {
             const theta = 2 * Math.PI * Math.random();
             return Vec2(
                 point.radius * Math.cos(theta) + point.position.x,
                 point.radius * Math.sin(theta) + point.position.y
             );
-        }
-
+        };
         point.interceptWith = (init, dir) => {
             const hit = sdfIntercept(init, dir, point);
             if (hit) return [...hit, point.normal(hit[1])];
-        }
-
-        point.serialize = () => ({ type: "point", name, position: position.toArray(), color: color.toArray(), radius, emissive })
+        };
+        point.serialize = () => ({
+            type: "point",
+            name,
+            position: position.toArray(),
+            color: color.toArray(),
+            radius,
+            emissive
+        });
         point.deserialize = (json) => Point({
             name: json.name,
             position: Vec2(json.position[0], json.position[1]),
@@ -191,6 +204,7 @@
         });
         return point;
     }
+
     function intersectScene(init, dir, scene) {
         let closest = undefined;
         let minDist = Number.MAX_VALUE;
@@ -208,35 +222,48 @@
         return closest;
     }
 
+    // --- Ray Tracing ---
     function rayTrace(x, normal, options, scene, cache) {
         const { bounces, importanceSampling, useCache } = options;
-        if (bounces < 0) return importanceSampling ? colorFromLight(x, normal, scene) : Color.BLACK;
+
+        // Try cache first
+        const cachedColor = cache.get(x);
+        if (useCache && cachedColor) return cachedColor;
+
+        // Base case: no more bounces
+        if (bounces < 0)
+            return importanceSampling ? colorFromLight(x, normal, scene) : Color.BLACK;
+
+        // Random direction, reflect if normal provided
         const theta = 2 * Math.PI * Math.random();
         let v = Vec2(Math.cos(theta), Math.sin(theta));
-        if (normal && v.dot(normal) < 0) {
-            v = v.scale(-1);
-        }
+        if (normal && v.dot(normal) < 0) v = v.scale(-1);
+
+        // Intersect scene
         const hit = intersectScene(x, v, scene);
-        if (!hit) return Color.BLACK;
+
+        // If no hit, cache and return black
+        if (!hit) return useCache ? cache.set(x, Color.BLACK) && Color.BLACK : Color.BLACK;
+
         const [p, n, e] = hit;
-        const cachedColor = cache.get(p);
-        if (useCache && cachedColor) return cachedColor;
-        const color = e.color;
-        if (e.emissive) return color;
-        let finalC = rayTrace(p, n, { ...options, bounces: bounces - 1 }, scene, cache);
-        finalC = finalC.mul(color);
-        cache.set(p, finalC);
-        return finalC;
+
+        // If emissive, cache and return color
+        if (e.emissive) return useCache ? cache.set(x, e.color) && e.color : e.color;
+
+        // Recursive ray trace
+        let finalC = rayTrace(p, n, { ...options, bounces: bounces - 1 }, scene, cache).mul(e.color);
+
+        return useCache ? cache.set(x, finalC) && finalC : finalC;
     }
+
     function colorFromLight(p, n, scene) {
         const emissiveElements = scene.filter((e) => e.emissive);
-        let c = Color.BLACK
+        let c = Color.BLACK;
         for (let i = 0; i < emissiveElements.length; i++) {
             const light = emissiveElements[i];
             const lightP = light.sample();
             const v = lightP.sub(p).normalize();
             const hit = intersectScene(p, v, scene);
-            if (!hit) continue;
             if (hit) {
                 const [p, n, e] = hit;
                 const color = e.color;
@@ -247,8 +274,9 @@
         }
         return c.scale(1 / emissiveElements.length);
     }
+
     function debugTrace(x, normal, bounces) {
-        if (bounces < 0) return
+        if (bounces < 0) return;
         const theta = 2 * Math.PI * Math.random();
         let v = Vec2(Math.cos(theta), Math.sin(theta));
         if (normal && v.dot(normal) <= 0) {
@@ -262,7 +290,7 @@
                     Vec2(((x.x / scale) + 1) * (w / 2) + center.x, ((x.y / scale) + 1) * (h / 2) + center.y),
                     Vec2(((p.x / scale) + 1) * (w / 2) + center.x, ((p.y / scale) + 1) * (h / 2) + center.y),
                     () => Color.ofRGB(1, 0, 1)
-                )
+                );
             }
             return;
         }
@@ -273,17 +301,18 @@
                 Vec2(((x.x / scale) + 1) * (w / 2) + center.x, ((x.y / scale) + 1) * (h / 2) + center.y),
                 Vec2(((p.x / scale) + 1) * (w / 2) + center.x, ((p.y / scale) + 1) * (h / 2) + center.y),
                 () => e.color
-            )
+            );
             return;
-        };
+        }
         canvas.drawLine(
             Vec2(((x.x / scale) + 1) * (w / 2) + center.x, ((x.y / scale) + 1) * (h / 2) + center.y),
             Vec2(((p.x / scale) + 1) * (w / 2) + center.x, ((p.y / scale) + 1) * (h / 2) + center.y),
             () => color
-        )
+        );
         debugTrace(p, n, bounces - 1);
     }
 
+    // --- Scene Definition ---
     const scene = [
         Point({ name: "light", position: Vec2(), radius: 0.1, emissive: true, color: Color.WHITE }),
         Line({ name: "left", positions: [Vec2(-1.5, -1.5), Vec2(-1.5, 1.5)], radius: 0.1, color: Color.RED }),
@@ -291,8 +320,9 @@
         Line({ name: "top", positions: [Vec2(-1.5, 1.5), Vec2(1.5, 1.5)], radius: 0.1, color: Color.WHITE }),
         Line({ name: "wall-1", positions: [Vec2(-0.5, -0.5), Vec2(0, -0.5)], radius: 0.1, color: Color.BLUE }),
         Line({ name: "wall-2", positions: [Vec2(0.5, -1), Vec2(1.0, -1)], radius: 0.1, color: Color.BLUE }),
-    ]
+    ];
 
+    // --- Debug Function ---
     function debug() {
         exposedCanvas.map((x, y) => Color.BLACK);
         debugTrace(
@@ -302,30 +332,28 @@
             ),
             undefined,
             1
-        )
+        );
     }
 
+    // --- Render Functions ---
     function render(params) {
-        const bounces = params.bounces;
-        const samplesPerPxl = params.samplesPerPxl;
-        const variance = params.variance;
-        const gamma = params.gamma;
+        const { bounces, samplesPerPxl, variance, gamma } = params;
         const invSamples = (bounces || 1) / samplesPerPxl;
-        return exposedCanvas
-            .map((x, y) => {
-                const px = scale * (2 * (x / w) - 1) + center.x;
-                const py = scale * (2 * (y / h) - 1) + center.y;
-                const p = Vec2(px, py);
-                let c = Color.BLACK;
-                for (let i = 0; i < samplesPerPxl; i++) {
-                    const theta = 2 * Math.PI * Math.random();
-                    let v = Vec2(Math.cos(theta), Math.sin(theta));
-                    const epsilon = v.scale(variance);
-                    c = c.add(rayTrace(p.add(epsilon), undefined, params, scene, cache));
-                }
-                return c.scale(invSamples);
-            })
+        return exposedCanvas.map((x, y) => {
+            const px = scale * (2 * (x / w) - 1) + center.x;
+            const py = scale * (2 * (y / h) - 1) + center.y;
+            const p = Vec2(px, py);
+            let c = Color.BLACK;
+            for (let i = 0; i < samplesPerPxl; i++) {
+                const theta = 2 * Math.PI * Math.random();
+                let v = Vec2(Math.cos(theta), Math.sin(theta));
+                const epsilon = v.scale(variance);
+                c = c.add(rayTrace(p.add(epsilon), undefined, params, scene, cache));
+            }
+            return c.scale(invSamples);
+        });
     }
+
     let isFirstTime = true;
     function renderParallel(params) {
         return exposedCanvas
@@ -342,7 +370,7 @@
                                 return Line().deserialize(elem);
                             }
                         });
-                    memory.cache = lightColorCache(0.1);
+                    memory.cache = lightColorCache(0.05);
                 }
                 if (memory.deserializedScene) {
                     const px = scale * (2 * (x / w) - 1) + center[0];
@@ -364,66 +392,59 @@
             )
             .run(
                 { center: center.toArray(), scale, w, h, params },
-                isFirstTime ? { scene: scene.map(s => s.serialize()) } :  {}
-            )
-            isFirstTime = false;
+                isFirstTime ? { scene: scene.map(s => s.serialize()) } : {}
+            );
+        isFirstTime = false;
     }
 
     function squareRender(params) {
-        const bounces = params.bounces;
-        const samplesPerPxl = params.samplesPerPxl;
-        const variance = params.variance;
-        const gamma = params.gamma;
+        const { bounces, samplesPerPxl, variance, gamma, budget } = params;
         const invSamples = (bounces || 1) / samplesPerPxl;
         const w = canvas.width;
         const h = canvas.height;
-        let side = Math.sqrt(w * h / params.budget);
-        for (let i = 0; i < params.budget; i++) {
+        let side = Math.sqrt(w * h / budget);
+        for (let i = 0; i < budget; i++) {
             let p = Vec2(
                 scale * (2 * Math.random() - 1) + center.x,
                 scale * (2 * Math.random() - 1) + center.y
             );
             const theta = 2 * Math.PI * Math.random();
             let v = Vec2(Math.cos(theta), Math.sin(theta));
-
             const epsilon = v.scale(variance);
-            p = p.add(epsilon)
-
+            p = p.add(epsilon);
             let c = Color.BLACK;
             c = c.add(rayTrace(p, undefined, params, scene, cache));
-
             p = p.sub(center).scale(1 / scale);
-            p = p.add(Vec2(1, 1)).scale(0.5)
-            p = p.mul(Vec2(w, h))
+            p = p.add(Vec2(1, 1)).scale(0.5);
+            p = p.mul(Vec2(w, h));
             exposedCanvas.drawSquare(
                 Vec2(p.x - side, p.y - side),
                 Vec2(p.x + side, p.y + side),
                 () => c.toGamma(gamma)
             );
-            // canvas.setPxl(xp * w, yp * h, c);
         }
-        exposedCanvas.paint();
         return exposedCanvas;
     }
 
-    // play
+    // --- Animation Loop ---
     const play = async ({ time, oldT }) => {
         const newT = new Date().getTime();
-        const dt = (new Date().getTime() - oldT) * 1e-3;
+        const dt = (newT - oldT) * 1e-3;
         document.title = `2D Light, FPS: ${((1 / dt).toFixed(2))}`;
-        if (PARAMS.squareRender) squareRender(PARAMS);
-        else if (PARAMS.useParallel) await renderParallel(PARAMS);
-        else render(PARAMS);
-        // debug();
-        //scene[0].position = Vec2(Math.cos(time), Math.sin(time)); // moving light
+        if (PARAMS.squareRender) {
+            squareRender(PARAMS).paint();
+        }
+        else if (PARAMS.useParallel) (await renderParallel(PARAMS)).paint();
+        else render(PARAMS).paint();
+        // scene[0].position = Vec2(Math.cos(time), Math.sin(time)); // moving light
         requestAnimationFrame(() => play({
             oldT: newT,
             time: time + dt,
         }));
-    }
-    requestAnimationFrame(() => play({ oldT: new Date().getTime(), time: 0 }))
+    };
+    requestAnimationFrame(() => play({ oldT: new Date().getTime(), time: 0 }));
 
-    // DOM
+    // --- Parameters & GUI ---
     const PARAMS = localStorage.getItem("PARAMS_2D") ?? {
         samplesPerPxl: 1,
         bounces: 5,
@@ -436,7 +457,7 @@
         importanceSampling: false,
         budget: 10000,
     };
-    // gui
+
     const pane = new Pane({ title: "Parameters" });
     pane.addBinding(PARAMS, "samplesPerPxl", { min: 1, max: 10, step: 1 });
     pane.addBinding(PARAMS, "bounces", { min: 0, max: 10, step: 1 });
@@ -444,13 +465,16 @@
     pane.addBinding(PARAMS, "gamma", { min: 0, max: 1, step: 0.01 });
     pane.addBinding(PARAMS, "importanceSampling", { label: "light samples" });
     pane.addBinding(PARAMS, "useCache", { label: "cache" });
+
     const select = pane.addBinding(PARAMS, 'mode', {
         options: {
-            default: 'default',
-            parallel: 'parallel',
-            square: "square"
+            default: "default",
+            parallel: "parallel",
+            square: "square",
+            gradual: "gradual",
         }
     });
+
     let squareFolder;
     function createSquareFolder() {
         if (PARAMS.squareRender && !squareFolder) {
@@ -458,37 +482,56 @@
                 title: 'Square Render',
                 expanded: true,
             });
-            squareFolder.addBinding(PARAMS, "budget", { min: 1000, max: 20000, step: 1000 });
+            squareFolder.addBinding(PARAMS, "budget", { min: 1000, max: 30000, step: 1000 });
         }
     }
     createSquareFolder();
+
     select.on("change", (ev) => {
-        if (ev.value === "parallel") {
-            PARAMS.useParallel = true;
-            PARAMS.squareRender = false;
-            squareFolder && pane.remove(squareFolder);
-            squareFolder = undefined;
-        } else if (ev.value === "square") {
-            PARAMS.squareRender = true;
-            PARAMS.useParallel = false;
-            createSquareFolder();
-        } else {
-            PARAMS.useParallel = false;
-            PARAMS.squareRender = false;
-            squareFolder && pane.remove(squareFolder);
-            squareFolder = undefined;
+        switch (ev.value) {
+            case "parallel":
+                PARAMS.useParallel = true;
+                PARAMS.squareRender = false;
+                squareFolder && pane.remove(squareFolder);
+                squareFolder = undefined;
+                exposedCanvas = canvas.exposure();
+                break;
+            case "square":
+                PARAMS.squareRender = true;
+                PARAMS.useParallel = false;
+                createSquareFolder()
+                exposedCanvas = canvas.exposure();
+                break;
+            case "gradual":
+                PARAMS.useParallel = false;
+                PARAMS.squareRender = false;
+                squareFolder && pane.remove(squareFolder);
+                squareFolder = undefined;
+                exposedCanvas = canvas.gradual();
+                break;
+            default:
+                PARAMS.useParallel = false;
+                PARAMS.squareRender = false;
+                squareFolder && pane.remove(squareFolder);
+                squareFolder = undefined;
+                exposedCanvas = canvas.exposure();
+                break;
         }
-    })
+    });
+
     const btn = pane.addButton({ title: 'fullscreen' });
     btn.on("click", () => toggleFullScreen(canvasDom));
     pane.on('change', () => {
         localStorage.setItem("PARAMS_2D", PARAMS);
     });
+
     function toggleFullScreen(elem) {
-        if (!document.fullscreenElement &&    // alternative standard method
+        if (
+            !document.fullscreenElement &&
             !document.mozFullScreenElement &&
             !document.webkitFullscreenElement &&
-            !document.msFullscreenElement) {  // current working methods
+            !document.msFullscreenElement
+        ) {
             if (elem.requestFullscreen) {
                 elem.requestFullscreen();
             } else if (elem.msRequestFullscreen) {
@@ -500,12 +543,15 @@
             }
         }
     }
+
+    // --- DOM Setup ---
     const canvasDom = canvas.DOM;
     const container = document.createElement("div");
     container.setAttribute("style", "display: flex; flex-grow: 1; margin: auto");
-    canvasDom.setAttribute("style", "flex-grow: 0.5")
+    canvasDom.setAttribute("style", "flex-grow: 0.5");
     container.appendChild(canvasDom);
     document.body.appendChild(container);
+
 </script>
 
 </html>

@@ -55,6 +55,7 @@
     (() => {
         const w = 640 / 2;
         const h = 480 / 2;
+        const cacheGridSize = 0.1;
         const canvas = Canvas.ofSize(w, h);
         let exposedCanvas = canvas.exposure();
         const camera = new Camera({ lookAt: Vec3(1.5, 1.5, 1.5) }).orbit(3, 0, 0);
@@ -84,11 +85,21 @@
                 )
             ));
             mouse = newMouse;
-            exposedCanvas = canvas.exposure();
+            if (PARAMS.mode === "gradual") {
+                canvas.fill();
+                exposedCanvas = canvas.gradual();
+            } else {
+                exposedCanvas.reset();
+            }
         })
         canvas.onMouseWheel(({ deltaY }) => {
             camera.orbit(sphericalCoords => sphericalCoords.add(Vec3(deltaY * 0.001, 0, 0)));
-            exposedCanvas = canvas.exposure();
+            if (PARAMS.mode === "gradual") {
+                canvas.fill();
+                exposedCanvas = canvas.gradual();
+            } else {
+                exposedCanvas.reset();
+            }
         })
         // scene
         const scene = new Scene();
@@ -258,9 +269,9 @@
         const play = async ({ time, oldT }) => {
             const newT = new Date().getTime();
             const dt = (new Date().getTime() - oldT) * 1e-3;
-            if (PARAMS.squareRender) camera.squareShot(scene, PARAMS).to(exposedCanvas);
-            else if (PARAMS.useParallel) await camera.parallelShot(scene, PARAMS).to(exposedCanvas);
-            else camera.sceneShot(scene, PARAMS).to(exposedCanvas);
+            if (PARAMS.squareRender) camera.squareShot(scene, PARAMS).to(exposedCanvas).paint();
+            else if (PARAMS.useParallel) (await camera.parallelShot(scene, PARAMS).to(exposedCanvas)).paint();
+            else camera.sceneShot(scene, PARAMS).to(exposedCanvas).paint();
             // debugTrace(Vec3(1.5, 1.5, 1.5), undefined, 10);
             document.title = `Ray Trace, FPS: ${((1 / dt).toFixed(2))}`;
             requestAnimationFrame(() => play({
@@ -295,7 +306,8 @@
             options: {
                 default: 'default',
                 parallel: 'parallel',
-                square: "square"
+                square: "square",
+                gradual: "gradual",
             }
         });
         let squareFolder;
@@ -310,20 +322,34 @@
         }
         createSquareFolder();
         select.on("change", (ev) => {
-            if (ev.value === "parallel") {
-                PARAMS.useParallel = true;
-                PARAMS.squareRender = false;
-                squareFolder && pane.remove(squareFolder);
-                squareFolder = undefined;
-            } else if (ev.value === "square") {
-                PARAMS.squareRender = true;
-                PARAMS.useParallel = false;
-                createSquareFolder()
-            } else {
-                PARAMS.useParallel = false;
-                PARAMS.squareRender = false;
-                squareFolder && pane.remove(squareFolder);
-                squareFolder = undefined;
+            switch (ev.value) {
+                case "parallel":
+                    PARAMS.useParallel = true;
+                    PARAMS.squareRender = false;
+                    squareFolder && pane.remove(squareFolder);
+                    squareFolder = undefined;
+                    exposedCanvas.reset();
+                    break;
+                case "square":
+                    PARAMS.squareRender = true;
+                    PARAMS.useParallel = false;
+                    createSquareFolder()
+                    exposedCanvas.reset();
+                    break;
+                case "gradual":
+                    PARAMS.useParallel = false;
+                    PARAMS.squareRender = false;
+                    squareFolder && pane.remove(squareFolder);
+                    squareFolder = undefined;
+                    exposedCanvas = canvas.gradual();
+                    break;
+                default:
+                    PARAMS.useParallel = false;
+                    PARAMS.squareRender = false;
+                    squareFolder && pane.remove(squareFolder);
+                    squareFolder = undefined;
+                    exposedCanvas.reset();
+                    break;
             }
         })
         const btn = pane.addButton({ title: 'fullscreen' });
