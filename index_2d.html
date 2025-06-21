@@ -33,8 +33,8 @@
     const canvas = Canvas.ofSize(w, h);
     let exposedCanvas = canvas.exposure();
     function lightColorCache(gridSpace) {
-        let ite = 1;
         const point2ColorMap = {};
+        const point2Ite = {};
         const ans = {};
         ans.hash = (p) => {
             const integerCoord = p.map(z => Math.floor(z / gridSpace));
@@ -44,19 +44,37 @@
         ans.set = (p, c) => {
             const h = ans.hash(p);
             if (h in point2ColorMap) {
-                const color = point2ColorMap[h]
-                // point2ColorMap[h] = color.add(c.sub(color).scale(1 / ite)).scale(0.5);
-                point2ColorMap[h] = color.add(c).scale(0.5);
+                point2Ite[h] = point2Ite[h] + 1;
+                point2ColorMap[h] = point2ColorMap[h].add(c.sub(point2ColorMap[h]).scale(1 / point2Ite[h]));
             } else {
+                point2Ite[h] = 1;
                 point2ColorMap[h] = c;
             }
-            ite++;
             return ans;
         };
         ans.get = p => {
-            const h = ans.hash(p);
+            // const v = [-1, 0, 1];
+            // const n = v.length;
+            // const nn = n * n;
+            // let color = Color.BLACK;
+            // let count = 0;
+            // for (let i = 0; i < nn; i++) {
+            //     const dx = v[Math.floor(i / n)];
+            //     const dy = v[i % n];
+            //     const p2 = p.add(Vec2(dx * gridSpace, dy * gridSpace));
+            //     const h = ans.hash(p2);
+            //     const c = point2ColorMap[h];
+            //     if (c !== undefined) {
+            //         color = color.add(c);
+            //         count++;
+            //     }
+            // }
+            // if (count > 0) {
+            //     return Math.random() < 0.5 ? color.scale(1 / count) : undefined;
+            // }
+            // return undefined;
+             const h = ans.hash(p);
             return Math.random() < 0.5 ? point2ColorMap[h] : undefined;
-            // return point2ColorMap[h];
         };
         return ans;
     }

@@ -28,7 +28,7 @@ class Sphere {
         const t = sphereInterception(this, ray);
         if (t) {
             let pointOfIntersection = ray.trace(t - epsilon);
-            return [pointOfIntersection, this];
+            return [t - epsilon, pointOfIntersection, this];
         }
     }
 
@@ -65,12 +65,12 @@ class Sphere {
             emissive: this.emissive,
             color: this.color.toArray(),
             position: this.position.toArray(),
-            material: {type: this.material.type, args: this.material.args}
+            material: { type: this.material.type, args: this.material.args }
         }
     }
 
     static deserialize(json) {
-        const {type, args} = json.material;
+        const { type, args } = json.material;
         return Sphere
             .builder()
             .name(json.name)

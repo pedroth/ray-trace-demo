@@ -1,6 +1,6 @@
 import Box from "./Box.js";
 import Color from "./Color.js";
-import { Diffuse , MATERIALS} from "./Material.js";
+import { Diffuse, MATERIALS } from "./Material.js";
 import Vec, { Vec2, Vec3 } from "./Vector.js";
 
 export default class Triangle {
@@ -29,7 +29,7 @@ export default class Triangle {
     normalToPoint(p) {
         const r = p.sub(this.positions[0]);
         const dot = this.faceNormal.dot(r);
-        return dot >= 0 ? this.faceNormal : this.faceNormal.scale(-1);
+        return dot < 1e-3 ? this.faceNormal : this.faceNormal.scale(-1);
     }
 
     interceptWith(ray) {
@@ -43,11 +43,11 @@ export default class Triangle {
         for (let i = 0; i < this.positions.length; i++) {
             const xi = this.positions[i];
             const u = x.sub(xi);
-            const ni = n.cross(this.edges[i]).normalize();
+            const ni = n.cross(this.edges[i])
             const dot = ni.dot(u);
             if (dot <= epsilon) return;
         }
-        return [x, this];
+        return [t - epsilon, x, this];
     }
 
     getBoundingBox() {
@@ -71,12 +71,12 @@ export default class Triangle {
             emissive: this.emissive,
             colors: this.colors.map(x => x.toArray()),
             positions: this.positions.map(x => x.toArray()),
-            material: {type: this.material.type, args: this.material.args}
+            material: { type: this.material.type, args: this.material.args }
         }
     }
 
     static deserialize(json) {
-        const {type, args} = json.material;
+        const { type, args } = json.material;
         return Triangle
             .builder()
             .name(json.name)

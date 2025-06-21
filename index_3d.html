@@ -53,9 +53,8 @@
     }
 
     (() => {
-        const w = 640 / 2;
-        const h = 480 / 2;
-        const cacheGridSize = 0.1;
+        const w = 640/2;
+        const h = 480/2;
         const canvas = Canvas.ofSize(w, h);
         let exposedCanvas = canvas.exposure();
         const camera = new Camera({ lookAt: Vec3(1.5, 1.5, 1.5) }).orbit(3, 0, 0);
@@ -254,7 +253,7 @@
                 if (n) camera.rasterLine({ canvas: exposedCanvas, elem: { color: Color.ofRGB(1, 0, 1), positions: [p, p.add(v.scale(2))] } });
                 return;
             }
-            const [hitP, elem] = hit;
+            const [_, hitP, elem] = hit;
             if (elem.emissive) {
                 camera.rasterLine({ canvas: exposedCanvas, elem: { color: elem.color || elem.colors[0], positions: [p, hitP] } });
                 return;
@@ -317,7 +316,7 @@
                     title: 'Square Render',
                     expanded: true,
                 });
-                squareFolder.addBinding(PARAMS, "budget", { min: 1000, max: 20000, step: 1000 });
+                squareFolder.addBinding(PARAMS, "budget", { min: 1000, max: 30000, step: 1000 });
             }
         }
         createSquareFolder();

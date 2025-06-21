@@ -1,12 +1,13 @@
 import Color from "./Color.js";
 import Ray from "./Ray.js";
+import { Vec3 } from "./Vector.js";
 
 export function rayTrace(ray, scene, options) {
     const { bounces, importanceSampling, useCache } = options;
     if (bounces < 0) return importanceSampling ? colorFromLight(ray.init, scene) : Color.BLACK;
     const interception = scene.interceptWith(ray)
     if (!interception) return Color.BLACK;
-    const [p, e] = interception;
+    const [_, p, e] = interception;
     const cachedColor = cache.get(p);
     if (cachedColor && useCache) return cachedColor;
     const color = e.color ?? e.colors[0];
@@ -34,7 +35,7 @@ function colorFromLight(p, scene) {
         const hit = scene.interceptWith(Ray(p, dir));
         if (!hit) continue;
         if (hit) {
-            const [p, e] = hit;
+            const [_, p, e] = hit;
             const color = e.color ?? e.colors[0];
             if (e.emissive) {
                 const n = e.normalToPoint(p);
@@ -49,6 +50,7 @@ function colorFromLight(p, scene) {
 
 const lightColorCache = (gridSpace) => {
     const point2ColorMap = {};
+    const point2Ite = {};
     const ans = {};
     ans.hash = (p) => {
         const integerCoord = p.map(z => Math.floor(z / gridSpace));
@@ -56,16 +58,40 @@ const lightColorCache = (gridSpace) => {
         return Math.abs(h);
     }
     ans.set = (p, c) => {
-        // if(c.equals(Color.BLACK)) return ans;
         const h = ans.hash(p);
         if (h in point2ColorMap) {
-            point2ColorMap[h] = point2ColorMap[h].add(c).scale(0.5);
+            point2Ite[h] = point2Ite[h] + 1;
+            point2ColorMap[h] = point2ColorMap[h].add(c.sub(point2ColorMap[h]).scale(1 / point2Ite[h]));
         } else {
+            point2Ite[h] = 1;
             point2ColorMap[h] = c;
         }
+
         return ans;
     }
     ans.get = p => {
+        // const v = [-1, 0, 1];
+        // const n = v.length;
+        // const nn = n * n;
+        // const nnn = n * n * n;
+        // let color = Color.BLACK;
+        // let count = 0;
+        // for (let i = 0; i < nnn; i++) {
+        //     const dz = v[i % n];
+        //     const dy = v[Math.floor(i / n) % n];
+        //     const dx = v[Math.floor(i / nn)];
+        //     const p2 = p.add(Vec3(dx * gridSpace, dy * gridSpace, dz * gridSpace));
+        //     const h = ans.hash(p2);
+        //     const c = point2ColorMap[h];
+        //     if (c !== undefined) {
+        //         color = color.add(c);
+        //         count++;
+        //     }
+        // }
+        // if (count > 0) {
+        //     return Math.random() < 0.5 ? color.scale(1 / count) : undefined;
+        // }
+        // return undefined;
         const h = ans.hash(p);
         return Math.random() < 0.5 ? point2ColorMap[h] : undefined;
     }

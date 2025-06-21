@@ -42,7 +42,7 @@ export default class Scene {
     for (let i = 0; i < elements.length; i++) {
       const interception = elements[i].interceptWith(ray)
       if (!interception) continue;
-      const [pos, _, t] = interception;
+      const [t, pos, _] = interception;
       const distance = ray
         .init
         .sub(pos)
@@ -70,8 +70,8 @@ export default class Scene {
   static deserialize(serializedScene) {
     return new Scene()
       .addList(serializedScene.map(x => {
-        if(x.type  === Triangle.name) return Triangle.deserialize(x);
-        if(x.type  === Sphere.name) return Sphere.deserialize(x); 
+        if (x.type === Triangle.name) return Triangle.deserialize(x);
+        if (x.type === Sphere.name) return Sphere.deserialize(x);
       }));
   }
 }
