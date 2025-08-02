@@ -3,6 +3,7 @@ import Color from "./Color.js";
 import { CHANNELS, MAX_8BIT } from "./Constants.js";
 import MyWorker from "./Utils.js";
 import { Vec2 } from "./Vector.js";
+import { mod } from "./Math.js";
 
 const NUMBER_OF_CORES = navigator.hardwareConcurrency;
 let WORKERS = [];
@@ -267,13 +268,13 @@ export default class Canvas {
   }
 
   resize(width, height) {
-    this._canvas.width = width;
-    this._canvas.height = height;
-    this._width = this._canvas.width;
-    this._height = this._canvas.height;
-    this._ctx = this._canvas.getContext("2d", { willReadFrequently: true });
-    this._imageData = this._ctx.getImageData(0, 0, this._width, this._height);
-    this._image = this._imageData.data;
+    this.canvas.width = width;
+    this.canvas.height = height;
+    this.width = this.canvas.width;
+    this.height = this.canvas.height;
+    this.ctx = this.canvas.getContext("2d", { willReadFrequently: true });
+    this.imageData = this.ctx.getImageData(0, 0, this._width, this._height);
+    this.image = this.imageData.data;
   }
 
   grid2canvas(i, j) {
@@ -291,13 +292,13 @@ export default class Canvas {
   }
 
   getPxl(x, y) {
-    const w = this._width;
-    const h = this._height;
+    const w = this.width;
+    const h = this.height;
     let [i, j] = this.canvas2grid(x, y);
     i = mod(i, h);
     j = mod(j, w);
     let index = 4 * (w * i + j);
-    return Color.ofRGBRaw(this._image[index], this._image[index + 1], this._image[index + 2], this._image[index + 3]);
+    return Color.ofRGB(this.image[index], this.image[index + 1], this.image[index + 2], this.image[index + 3]);
   }
 
   setPxl(x, y, color) {

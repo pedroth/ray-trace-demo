@@ -12,7 +12,8 @@ const PARAMS = {
   variance: 0.001,
   gamma: 0.5,
   importanceSampling: true,
-  useCache: false
+  useCache: false,
+  isBiased: true,
 };
 
 const NumberOfWorkers = navigator.hardwareConcurrency;
@@ -164,7 +165,8 @@ export default class Camera {
     const samplesPerPxl = params.samplesPerPxl;
     const variance = params.variance;
     const gamma = params.gamma;
-    const invSamples = (bounces || 1) / samplesPerPxl;
+    const isBiased = params.isBiased;
+    const invSamples = (isBiased ? bounces : 1) / samplesPerPxl
     const lambda = ray => {
       let c = Color.BLACK;
       for (let i = 0; i < samplesPerPxl; i++) {

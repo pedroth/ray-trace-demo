@@ -69,7 +69,7 @@ const lightColorCache = (gridSpace) => {
 
         return ans;
     }
-    ans.get = p => {
+    ans.get = (p) => {
         // const v = [-1, 0, 1];
         // const n = v.length;
         // const nn = n * n;

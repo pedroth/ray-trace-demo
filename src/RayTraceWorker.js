@@ -26,7 +26,8 @@ function main(inputs) {
     const samplesPerPxl = params.samplesPerPxl;
     const variance = params.variance;
     const gamma = params.gamma;
-    const invSamples = (bounces || 1) / samplesPerPxl;
+    const isBiased = params.isBiased;
+    const invSamples = (isBiased ? bounces : 1) / samplesPerPxl
     // the order does matters
     for (let y = startRow; y < endRow; y++) {
         for (let x = 0; x < width; x++) {

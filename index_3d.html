@@ -292,6 +292,7 @@
             squareRender: false,
             importanceSampling: false,
             budget: 10000,
+            isBiased: true
         };
         // gui
         const pane = new Pane({ title: "Parameters" });
@@ -301,6 +302,7 @@
         pane.addBinding(PARAMS, "gamma", { min: 0, max: 1, step: 0.01 });
         pane.addBinding(PARAMS, "importanceSampling", { label: "light samples" });
         pane.addBinding(PARAMS, "useCache", { label: "cache" });
+        pane.addBinding(PARAMS, "isBiased", { label: "is biased" });
         const select = pane.addBinding(PARAMS, 'mode', {
             options: {
                 default: 'default',

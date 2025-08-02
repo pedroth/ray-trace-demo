@@ -73,7 +73,7 @@
             //     return Math.random() < 0.5 ? color.scale(1 / count) : undefined;
             // }
             // return undefined;
-             const h = ans.hash(p);
+            const h = ans.hash(p);
             return Math.random() < 0.5 ? point2ColorMap[h] : undefined;
         };
         return ans;
@@ -249,8 +249,9 @@
         if (useCache && cachedColor) return cachedColor;
 
         // Base case: no more bounces
-        if (bounces < 0)
+        if (bounces < 0) {
             return importanceSampling ? colorFromLight(x, normal, scene) : Color.BLACK;
+        }
 
         // Random direction, reflect if normal provided
         const theta = 2 * Math.PI * Math.random();
@@ -356,7 +357,8 @@
     // --- Render Functions ---
     function render(params) {
         const { bounces, samplesPerPxl, variance, gamma } = params;
-        const invSamples = (bounces || 1) / samplesPerPxl;
+        const isBiased = params.isBiased;
+        const invSamples = (isBiased ? bounces : 1) / samplesPerPxl
         return exposedCanvas.map((x, y) => {
             const px = scale * (2 * (x / w) - 1) + center.x;
             const py = scale * (2 * (y / h) - 1) + center.y;
@@ -395,7 +397,8 @@
                     const py = scale * (2 * (y / h) - 1) + center[1];
                     const p = Vec2(px, py);
                     let c = Color.BLACK;
-                    const invSamples = (bounces || 1) / samplesPerPxl;
+                    const isBiased = params.isBiased;
+                    const invSamples = (isBiased ? bounces : 1) / samplesPerPxl
                     for (let i = 0; i < samplesPerPxl; i++) {
                         const theta = 2 * Math.PI * Math.random();
                         let v = Vec2(Math.cos(theta), Math.sin(theta));
@@ -417,7 +420,8 @@
 
     function squareRender(params) {
         const { bounces, samplesPerPxl, variance, gamma, budget } = params;
-        const invSamples = (bounces || 1) / samplesPerPxl;
+        const isBiased = params.isBiased;
+        const invSamples = (isBiased ? bounces : 1) / samplesPerPxl
         const w = canvas.width;
         const h = canvas.height;
         let side = Math.sqrt(w * h / budget);
@@ -474,6 +478,7 @@
         squareRender: false,
         importanceSampling: false,
         budget: 10000,
+        isBiased: true,
     };
 
     const pane = new Pane({ title: "Parameters" });
@@ -483,7 +488,7 @@
     pane.addBinding(PARAMS, "gamma", { min: 0, max: 1, step: 0.01 });
     pane.addBinding(PARAMS, "importanceSampling", { label: "light samples" });
     pane.addBinding(PARAMS, "useCache", { label: "cache" });
-
+    pane.addBinding(PARAMS, "isBiased", { label: "is biased" });
     const select = pane.addBinding(PARAMS, 'mode', {
         options: {
             default: "default",
