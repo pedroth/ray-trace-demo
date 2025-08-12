@@ -39,7 +39,7 @@ function main(inputs) {
                 const r = Ray(ray.init, ray.dir.add(epsilonOrtho).normalize());
                 c = c.add(rayTrace(r, scene, params));
             }
-            const color = c.scale(invSamples).toGamma(gamma);
+            const color = c.scale(2 * invSamples).toGamma(gamma);
             image[index++] = color.red;
             image[index++] = color.green;
             image[index++] = color.blue;

@@ -1,32 +1,71 @@
 import Color from "./Color.js";
 import Ray from "./Ray.js";
+import { randomPointInSphere } from "./Utils.js";
 import { Vec3 } from "./Vector.js";
+
 
 export function rayTrace(ray, scene, options) {
     const { bounces, importanceSampling, useCache } = options;
-    if (bounces < 0) return importanceSampling ? colorFromLight(ray.init, scene) : Color.BLACK;
-    const interception = scene.interceptWith(ray)
-    if (!interception) return Color.BLACK;
-    const [_, p, e] = interception;
-    const cachedColor = cache.get(p);
-    if (cachedColor && useCache) return cachedColor;
-    const color = e.color ?? e.colors[0];
+    if (bounces < 0) return Color.BLACK;
+    const hit = scene.interceptWith(ray)
+    if (!hit) return Color.BLACK;
+
+    const [_, p, e] = hit;
+    if (useCache) {
+        const cachedColor = cache.get(p);
+        if (cachedColor) { return cachedColor; }
+    }
+    const albedo = e.color ?? e.colors[0];
     const mat = e.material;
-    let r = mat.scatter(ray, p, e);
-    let finalC = rayTrace(
-        r,
+    const isEmissive = e.emissive;
+
+    if (isEmissive) {
+        if (useCache) { cache.set(p, albedo); }
+        return albedo;
+    }
+
+
+    let scatterRay = importanceSampling && Math.random() < 0.05 ? rayFromLight(p, scene) : mat.scatter(ray, p, e);
+    let scatterColor = rayTrace(
+        scatterRay,
         scene,
         { ...options, bounces: bounces - 1 }
     );
-    const dot = Math.max(0, r.dir.dot(e.normalToPoint(p)));
-    const finalColor = e.emissive ? color.scale(dot).add(color.mul(finalC)) : color.mul(finalC);
-    cache.set(p, finalColor);
+    let attenuation = scatterRay.dir.dot(e.normalToPoint(p));
+    attenuation = Math.abs(attenuation)
+    const finalColor = albedo.mul(scatterColor).scale(attenuation);
+    if (useCache) { cache.set(p, finalColor); }
     return finalColor;
+}
+
+
+function rayFromLight(p, scene) {
+    const emissiveElements = scene.getElements().filter((e) => e.emissive);
+    let dirAcc = Vec3();
+    let numberOfLights = 0;
+    for (let i = 0; i < emissiveElements.length; i++) {
+        const light = emissiveElements[i];
+        const lightP = light.sample();
+        const v = lightP.sub(p);
+        const dir = v.normalize();
+        const hit = scene.interceptWith(Ray(p, dir));
+        if (!hit) continue;
+        if (hit) {
+            const [_, p, e] = hit;
+            const color = e.color ?? e.colors[0];
+            if (e.emissive) {
+                dirAcc = dirAcc.add(dir);
+                numberOfLights++;
+            }
+        }
+    }
+    return Ray(p, dirAcc.scale(1 / numberOfLights).normalize());
 }
 
 function colorFromLight(p, scene) {
     const emissiveElements = scene.getElements().filter((e) => e.emissive);
     let c = Color.BLACK
+    let numberOfLights = 0;
     for (let i = 0; i < emissiveElements.length; i++) {
         const light = emissiveElements[i];
         const lightP = light.sample();
@@ -39,8 +78,12 @@ function colorFromLight(p, scene) {
             const color = e.color ?? e.colors[0];
             if (e.emissive) {
                 const n = e.normalToPoint(p);
-                const dot = Math.max(0, dir.dot(n));
-                c = c.add(color.scale(dot));
+                const dot = dir.dot(n);
+                const attenuation = dot <= 0 ? -dot : dot;
+                if (attenuation > 0) {
+                    c = c.add(color.scale(attenuation));
+                    numberOfLights++;
+                }
             }
         }
     }
@@ -70,31 +113,27 @@ const lightColorCache = (gridSpace) => {
         return ans;
     }
     ans.get = (p) => {
-        // const v = [-1, 0, 1];
-        // const n = v.length;
-        // const nn = n * n;
-        // const nnn = n * n * n;
-        // let color = Color.BLACK;
-        // let count = 0;
-        // for (let i = 0; i < nnn; i++) {
-        //     const dz = v[i % n];
-        //     const dy = v[Math.floor(i / n) % n];
-        //     const dx = v[Math.floor(i / nn)];
-        //     const p2 = p.add(Vec3(dx * gridSpace, dy * gridSpace, dz * gridSpace));
-        //     const h = ans.hash(p2);
-        //     const c = point2ColorMap[h];
-        //     if (c !== undefined) {
-        //         color = color.add(c);
-        //         count++;
-        //     }
-        // }
-        // if (count > 0) {
-        //     return Math.random() < 0.5 ? color.scale(1 / count) : undefined;
-        // }
-        // return undefined;
+        const samples = 10;
+        const coin = Math.random() < 0.25;
+        if (!coin) return undefined;
+        let validSamples = 0;
         const h = ans.hash(p);
-        return Math.random() < 0.5 ? point2ColorMap[h] : undefined;
+        let accColor = point2ColorMap[h];
+        if (!accColor) return undefined;
+        for (let i = 0; i < samples; i++) {
+            const epsilon = randomPointInSphere(3).scale(gridSpace);
+            const p2 = p.add(epsilon);
+            const h = ans.hash(p2);
+            if (h in point2ColorMap) {
+                accColor = accColor.add(point2ColorMap[h]);
+                validSamples++;
+            }
+        }
+        if (validSamples === 0) return undefined;
+        return accColor.scale(1 / validSamples);
+        // const h = ans.hash(p);
+        // return Math.random() < 0.5 ? point2ColorMap[h] : undefined;
     }
     return ans;
 }
-const cache = lightColorCache(0.05);
+const cache = lightColorCache(0.025);
