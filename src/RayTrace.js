@@ -6,7 +6,7 @@ import { Vec3 } from "./Vector.js";
 
 export function rayTrace(ray, scene, options) {
     const { bounces, importanceSampling, useCache } = options;
-    if (bounces < 0) return Color.BLACK;
+    if (bounces < 0) return importanceSampling ? colorFromLight(ray.init, scene) : Color.BLACK;
     const hit = scene.interceptWith(ray)
     if (!hit) return Color.BLACK;
 
@@ -24,8 +24,9 @@ export function rayTrace(ray, scene, options) {
         return albedo;
     }
 
-
-    let scatterRay = importanceSampling && Math.random() < 0.05 ? rayFromLight(p, scene) : mat.scatter(ray, p, e);
+    let scatterRay = (importanceSampling && Math.random() < 0.1) ?
+        rayFromLight(p, scene) :
+        mat.scatter(ray, p, e);
     let scatterColor = rayTrace(
         scatterRay,
         scene,
