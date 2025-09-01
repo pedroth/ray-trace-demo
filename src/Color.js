@@ -73,6 +73,11 @@ export default class Color {
     return Color.ofRGB(r, g, b);
   }
 
+  toGray() {
+    const gray = 0.299 * this.red + 0.587 * this.green + 0.114 * this.blue;
+    return Color.ofRGB(gray, gray, gray, this.alpha);
+  }
+
   invert() {
     return Color.ofRGB(1 - this.red, 1 - this.green, 1 - this.blue);
   }

@@ -32,8 +32,7 @@ export function rayTrace(ray, scene, options) {
         scene,
         { ...options, bounces: bounces - 1 }
     );
-    let attenuation = scatterRay.dir.dot(e.normalToPoint(p));
-    attenuation = Math.abs(attenuation)
+    const attenuation = Math.abs(e.normalToPoint(p).dot(scatterRay.dir));
     const finalColor = albedo.mul(scatterColor).scale(attenuation);
     if (useCache) { cache.set(p, finalColor); }
     return finalColor;
@@ -80,7 +79,7 @@ function colorFromLight(p, scene) {
             if (e.emissive) {
                 const n = e.normalToPoint(p);
                 const dot = dir.dot(n);
-                const attenuation = dot <= 0 ? -dot : dot;
+                const attenuation = Math.abs(dot);
                 if (attenuation > 0) {
                     c = c.add(color.scale(attenuation));
                     numberOfLights++;
@@ -110,7 +109,6 @@ const lightColorCache = (gridSpace) => {
             point2Ite[h] = 1;
             point2ColorMap[h] = c;
         }
-
         return ans;
     }
     ans.get = (p) => {
