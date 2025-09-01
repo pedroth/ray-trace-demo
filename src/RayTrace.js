@@ -9,7 +9,6 @@ export function rayTrace(ray, scene, options) {
     if (bounces < 0) return importanceSampling ? colorFromLight(ray.init, scene) : Color.BLACK;
     const hit = scene.interceptWith(ray)
     if (!hit) return Color.BLACK;
-
     const [_, p, e] = hit;
     if (useCache) {
         const cachedColor = cache.get(p);
@@ -18,12 +17,10 @@ export function rayTrace(ray, scene, options) {
     const albedo = e.color ?? e.colors[0];
     const mat = e.material;
     const isEmissive = e.emissive;
-
     if (isEmissive) {
         if (useCache) { cache.set(p, albedo); }
         return albedo;
     }
-
     let scatterRay = (importanceSampling && Math.random() < 0.1) ?
         rayFromLight(p, scene) :
         mat.scatter(ray, p, e);
