@@ -28,15 +28,15 @@ export default class Color {
   }
 
   add(color) {
-    return Color.ofRGB(this.rgb[0] + color.red, this.rgb[1] + color.green, this.rgb[2] + color.blue, this.alpha + color.alpha);
+    return Color.ofRGB(this.rgb[0] + color.red, this.rgb[1] + color.green, this.rgb[2] + color.blue, this.alpha);
   }
 
   sub(color) {
-    return Color.ofRGB(this.rgb[0] - color.red, this.rgb[1] - color.green, this.rgb[2] - color.blue, this.alpha - color.alpha);
+    return Color.ofRGB(this.rgb[0] - color.red, this.rgb[1] - color.green, this.rgb[2] - color.blue, this.alpha);
   }
 
   scale(r) {
-    return Color.ofRGB(r * this.red, r * this.green, r * this.blue, r * this.alpha);
+    return Color.ofRGB(r * this.red, r * this.green, r * this.blue, this.alpha);
   }
 
   mul(color) {
@@ -44,7 +44,7 @@ export default class Color {
       this.rgb[0] * color.red,
       this.rgb[1] * color.green,
       this.rgb[2] * color.blue,
-      this.alpha * color.alpha
+      this.alpha
     )
   }
 
