@@ -30,6 +30,7 @@
     const w = 640 / 2;
     const h = 480 / 2;
     const size = Vec2(w, h);
+    const cacheGridSpace = 0.01;
     const canvas = Canvas.ofSize(w, h);
     let exposedCanvas = canvas.exposure();
     function lightColorCache(gridSpace) {
@@ -53,12 +54,33 @@
             return ans;
         };
         ans.get = p => {
+            const samples = 20;
+            const coin = Math.random() < 0.25;
+            if (!coin) return undefined;
+            let validSamples = 0;
             const h = ans.hash(p);
-            return Math.random() < 0.5 ? point2ColorMap[h] : undefined;
+            let accColor = point2ColorMap[h];
+            if (!accColor) return undefined;
+            for (let i = 0; i < samples; i++) {
+                const theta = 2 * Math.PI * Math.random();
+                let v = Vec2(Math.cos(theta), Math.sin(theta));
+                const epsilon = v.scale(gridSpace / 3);
+                const p2 = p.add(epsilon);
+                const h = ans.hash(p2);
+                if (h in point2ColorMap) {
+                    accColor = accColor.add(point2ColorMap[h]);
+                    validSamples++;
+                }
+            }
+            if (validSamples === 0) return undefined;
+            return accColor.scale(1 / validSamples);
+
+            // const h = ans.hash(p);
+            // return Math.random() < 0.5 ? point2ColorMap[h] : undefined;
         };
         return ans;
     }
-    let cache = lightColorCache(0.1);
+    let cache = lightColorCache(cacheGridSpace);
 
     // --- Mouse Handling ---
     let mousedown = false;
@@ -230,14 +252,16 @@
     // --- Ray Tracing ---
     function rayTrace(x, normal, options, scene, cache) {
         const { bounces, importanceSampling, useCache } = options;
+        // Base case: no more bounces
+        if (bounces < 0) {
+            return importanceSampling ? colorFromLight(x, normal, scene) : Color.BLACK;
+        }
 
         // Try cache first
-        const cachedColor = cache.get(x);
-        if (useCache && cachedColor) return cachedColor;
-
-        // Base case: no more bounces
-        if (bounces < 0)
-            return importanceSampling ? colorFromLight(x, normal, scene) : Color.BLACK;
+        if (useCache) {
+            const cachedColor = cache.get(x);
+            if (cachedColor) return cachedColor;
+        }
 
         // Random direction, reflect if normal provided
         const theta = 2 * Math.PI * Math.random();
@@ -246,19 +270,27 @@
 
         // Intersect scene
         const hit = intersectScene(x, v, scene);
-
-        // If no hit, cache and return black
-        if (!hit) return useCache ? cache.set(x, Color.BLACK) && Color.BLACK : Color.BLACK;
+        // If no hit, return black
+        if (!hit) return Color.BLACK;
 
         const [p, n, e] = hit;
-
+        const albedo = e.color;
+        const isEmissive = e.emissive;
         // If emissive, cache and return color
-        if (e.emissive) return useCache ? cache.set(x, e.color) && e.color : e.color;
+        if (isEmissive) {
+            if (useCache) {
+                cache.set(x, albedo)
+            }
+            return albedo;
+        }
 
         // Recursive ray trace
-        let finalC = rayTrace(p, n, { ...options, bounces: bounces - 1 }, scene, cache).mul(e.color);
+        const scatterColor = rayTrace(p, n, { ...options, bounces: bounces - 1 }, scene, cache)
+        const attenuation = Math.abs(n.dot(v));
 
-        return useCache ? cache.set(x, finalC) && finalC : finalC;
+        const finalC = scatterColor.mul(albedo).scale(attenuation);
+        if (useCache) { cache.set(p, finalC); }
+        return finalC;
     }
 
     function colorFromLight(p, n, scene) {
@@ -285,7 +317,7 @@
 
     // --- Render Functions ---
     function render(params) {
-        const { bounces, samplesPerPxl, variance, gamma, isBiased} = params;
+        const { bounces, samplesPerPxl, variance, gamma, isBiased } = params;
         const invSamples = (isBiased ? bounces : 1) / samplesPerPxl
         return exposedCanvas.map((x, y) => {
             const px = scale * (2 * (x / w) - 1) + center.x;
@@ -308,7 +340,7 @@
         isNewScene = false;
         return exposedCanvas
             .mapParallel((x, y, vars, memory) => {
-                const { scale, center, w, h, params } = vars;
+                const { scale, center, w, h, params, cacheGridSpace } = vars;
                 const { gamma, bounces, importanceSampling, samplesPerPxl, variance } = params;
                 let { scene: serializedScene, deserializedScene, isNewScene } = memory;
                 if (isNewScene && serializedScene) {
@@ -320,7 +352,7 @@
                                 return Line().deserialize(elem);
                             }
                         });
-                    memory.cache = lightColorCache(0.05);
+                    memory.cache = lightColorCache(cacheGridSpace);
                 }
                 if (memory.deserializedScene) {
                     const px = scale * (2 * (x / w) - 1) + center[0];
@@ -342,7 +374,7 @@
                 [rayTrace, colorFromLight, intersectScene, Line, Point, sdfIntercept, lightColorCache]
             )
             .run(
-                { center: center.toArray(), scale, w, h, params },
+                { center: center.toArray(), scale, w, h, params, cacheGridSpace },
                 memory
             )
     }

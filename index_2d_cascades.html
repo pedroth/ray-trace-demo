@@ -200,7 +200,18 @@
         mouse = Vec2();
         let id = scene.length;
         for (let i = 0; i < path.length - 1; i++) {
-            scene.push(Line({ name: `id_${id}`, positions: [path[i].div(size).map(x => 2 * x - 1).scale(scale).add(center), path[i + 1].div(size).map(x => 2 * x - 1).scale(scale).add(center)], radius: 0.1, emissive: true, color: Color.WHITE }))
+            scene.push(
+                Line({
+                    name: `id_${id}`,
+                    positions: [
+                        path[i].div(size).map(x => 2 * x - 1).scale(scale).add(center),
+                        path[i + 1].div(size).map(x => 2 * x - 1).scale(scale).add(center)
+                    ],
+                    radius: 0.1,
+                    emissive: true,
+                    color: Color.WHITE
+                })
+            )
         }
         isNewScene = true;
         path = [];
@@ -219,9 +230,8 @@
     canvas.onMouseWheel(({ deltaY }) => {
     })
 
-
     let scene = [];
-    function rayTrace(x, scene, options = {}) {
+    function rayTrace(x, normal, scene, options = {}) {
         const { bounces } = options;
         // Base case: no more bounces
         if (bounces < 0) {
@@ -235,33 +245,36 @@
 
         // Intersect scene
         const hit = intersectScene(x, v, scene);
+        if(!hit) {
+            return Color.BLACK;
+        }
         const [p, n, e] = hit;
         return rayTrace(p, n, { ...options, bounces: bounces - 1 }, scene, cache).mul(e.color);
     }
 
     // --- Render Functions ---
     function render(params) {
-        const {samplesPerPxl = 1} = params || {};
+        const { samplesPerPxl = 1 } = params || {};
         return canvas.map((x, y) => {
             const gridSpace = 0.5;
             const px = scale * (2 * (x / w) - 1) + center.x;
             const py = scale * (2 * (y / h) - 1) + center.y;
             const p = Vec2(px, py);
-            const color = Color.BLACK
-            for(let i = 0; i < samplesPerPxl; i++) {
+            let color = Color.BLACK
+            for (let i = 0; i < samplesPerPxl; i++) {
                 const theta = 2 * Math.PI * Math.random();
                 const dir = Vec2(Math.cos(theta), Math.sin(theta));
-                color = color.add(radianceCascades.get(p, dir, 1)); 
+                color = color.add(radianceCascades.get(p, dir, 1));
             }
-            for(let i = 0; i < samplesPerPxl; i++) {
+            for (let i = 0; i < samplesPerPxl; i++) {
                 const theta = 2 * Math.PI * Math.random();
                 const dir = Vec2(Math.cos(theta), Math.sin(theta));
-                color = color.add(radianceCascades.get(p, dir, 0)); 
+                color = color.add(radianceCascades.get(p, dir, 0));
             }
             color = color.scale(1 / (2 * samplesPerPxl));
             return color;
         });
-        
+
     }
 
 
@@ -329,7 +342,7 @@
         const newT = new Date().getTime();
         const dt = (newT - oldT) * 1e-3;
         document.title = `2D Light, FPS: ${((1 / dt).toFixed(2))}`;
-        updateLight(PARAMS);
+        //updateLight(PARAMS);
         render().paint();
         // debug(scene);
         requestAnimationFrame(() => play({
