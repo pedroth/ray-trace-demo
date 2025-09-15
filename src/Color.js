@@ -7,7 +7,7 @@ import { MAX_8BIT, RAD2DEG } from "./Constants.js";
  */
 export default class Color {
   constructor(rgb, alpha = 1.0) {
-    this.rgb = rgb;
+    this.rgb = rgb.map(x => Number.isNaN(x) ? 0 : x);
     this.alpha = alpha;
   }
 
@@ -28,15 +28,15 @@ export default class Color {
   }
 
   add(color) {
-    return Color.ofRGB(this.rgb[0] + color.red, this.rgb[1] + color.green, this.rgb[2] + color.blue, this.alpha + color.alpha);
+    return Color.ofRGB(this.rgb[0] + color.red, this.rgb[1] + color.green, this.rgb[2] + color.blue, this.alpha);
   }
 
   sub(color) {
-    return Color.ofRGB(this.rgb[0] - color.red, this.rgb[1] - color.green, this.rgb[2] - color.blue, this.alpha - color.alpha);
+    return Color.ofRGB(this.rgb[0] - color.red, this.rgb[1] - color.green, this.rgb[2] - color.blue, this.alpha);
   }
 
   scale(r) {
-    return Color.ofRGB(r * this.red, r * this.green, r * this.blue, r * this.alpha);
+    return Color.ofRGB(r * this.red, r * this.green, r * this.blue, this.alpha);
   }
 
   mul(color) {
@@ -44,7 +44,7 @@ export default class Color {
       this.rgb[0] * color.red,
       this.rgb[1] * color.green,
       this.rgb[2] * color.blue,
-      this.alpha * color.alpha
+      this.alpha
     )
   }
 
@@ -71,6 +71,11 @@ export default class Color {
     const g = this.green ** alpha;
     const b = this.blue ** alpha;
     return Color.ofRGB(r, g, b);
+  }
+
+  toGray() {
+    const gray = 0.299 * this.red + 0.587 * this.green + 0.114 * this.blue;
+    return Color.ofRGB(gray, gray, gray, this.alpha);
   }
 
   invert() {
