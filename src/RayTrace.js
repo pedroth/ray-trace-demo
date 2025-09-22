@@ -30,7 +30,8 @@ export function rayTrace(ray, scene, options) {
         { ...options, bounces: bounces - 1 }
     );
     const attenuation = Math.abs(e.normalToPoint(p).dot(scatterRay.dir));
-    const finalColor = albedo.mul(scatterColor).scale(attenuation);
+    // the 2 is very important, it comes from the fact of uniform albedo
+    const finalColor = albedo.scale(2).mul(scatterColor).scale(attenuation);
     if (useCache) { cache.set(p, finalColor); }
     return finalColor;
 }

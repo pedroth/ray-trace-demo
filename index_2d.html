@@ -281,7 +281,7 @@
         const scatterColor = rayTrace(p, n, { ...options, bounces: bounces - 1 }, scene, cache)
         const attenuation = Math.abs(n.dot(v));
 
-        const finalC = scatterColor.mul(albedo).scale(attenuation);
+        const finalC = scatterColor.scale(Math.PI/ 2).mul(albedo).scale(attenuation);
         if (useCache) { cache.set(p, finalC); }
         return finalC;
     }
