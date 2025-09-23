@@ -3,6 +3,31 @@ import Ray from "./Ray.js";
 import { randomPointInSphere } from "./Utils.js";
 import { Vec3 } from "./Vector.js";
 
+export function rayTraceFor(ray, scene, options) {
+    const { bounces, importanceSampling, useCache } = options;
+    let albedoAcc = Color.WHITE;
+    let currentRay = ray;
+    for (let i = 0; i < bounces; i++) {
+        const hit = scene.interceptWith(currentRay)
+        if (!hit) return Color.BLACK;
+
+        const [_, p, e] = hit;
+        if (e.emissive) {
+            const emissiveColor = e.color ?? e.colors[0];
+            const attenuation = e.normalToPoint(p).dot(currentRay.dir);
+            const finalColor = albedoAcc.mul(emissiveColor).scale(2 * attenuation);
+            if (useCache) { cache.set(p, finalColor); }
+            return finalColor;
+        }
+        const albedo = e.color ?? e.colors[0];
+        const mat = e.material;
+        let scatterRay = mat.scatter(currentRay, p, e);
+        const attenuation = Math.abs(e.normalToPoint(p).dot(scatterRay.dir));
+        albedoAcc = albedoAcc.mul(albedo).scale(2 * attenuation);
+        currentRay = scatterRay;
+    }
+    return importanceSampling ? albedoAcc.mul(colorFromLight(currentRay.init, scene)) : Color.BLACK;
+}
 
 export function rayTrace(ray, scene, options) {
     const { bounces, importanceSampling, useCache } = options;
@@ -21,9 +46,7 @@ export function rayTrace(ray, scene, options) {
         if (useCache) { cache.set(p, albedo); }
         return albedo;
     }
-    let scatterRay = (importanceSampling && Math.random() < 0.1) ?
-        rayFromLight(p, scene) :
-        mat.scatter(ray, p, e);
+    let scatterRay = mat.scatter(ray, p, e);
     let scatterColor = rayTrace(
         scatterRay,
         scene,
@@ -31,33 +54,9 @@ export function rayTrace(ray, scene, options) {
     );
     const attenuation = Math.abs(e.normalToPoint(p).dot(scatterRay.dir));
     // the 2 is very important, it comes from the fact of uniform albedo
-    const finalColor = albedo.scale(2).mul(scatterColor).scale(attenuation);
+    const finalColor = albedo.mul(scatterColor).scale(2 * attenuation);
     if (useCache) { cache.set(p, finalColor); }
     return finalColor;
-}
-
-
-function rayFromLight(p, scene) {
-    const emissiveElements = scene.getElements().filter((e) => e.emissive);
-    let dirAcc = Vec3();
-    let numberOfLights = 0;
-    for (let i = 0; i < emissiveElements.length; i++) {
-        const light = emissiveElements[i];
-        const lightP = light.sample();
-        const v = lightP.sub(p);
-        const dir = v.normalize();
-        const hit = scene.interceptWith(Ray(p, dir));
-        if (!hit) continue;
-        if (hit) {
-            const [_, p, e] = hit;
-            const color = e.color ?? e.colors[0];
-            if (e.emissive) {
-                dirAcc = dirAcc.add(dir);
-                numberOfLights++;
-            }
-        }
-    }
-    return Ray(p, dirAcc.scale(1 / numberOfLights).normalize());
 }
 
 function colorFromLight(p, scene) {

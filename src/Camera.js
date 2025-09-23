@@ -2,7 +2,7 @@ import Color from "./Color.js";
 import { CHANNELS } from "./Constants.js";
 import MyWorker from "./Utils.js";
 import Ray from "./Ray.js";
-import { rayTrace } from "./RayTrace.js";
+import { rayTrace, rayTraceFor } from "./RayTrace.js";
 import { randomPointInSphere } from "./Utils.js";
 import Vec, { Vec2, Vec3 } from "./Vector.js";
 
@@ -14,6 +14,7 @@ const PARAMS = {
   importanceSampling: true,
   useCache: false,
   isBiased: true,
+  isRecursive: true,
 };
 
 const NumberOfWorkers = navigator.hardwareConcurrency;
@@ -167,13 +168,14 @@ export default class Camera {
     const gamma = params.gamma;
     const isBiased = params.isBiased;
     const invSamples = (isBiased ? bounces : 1) / samplesPerPxl
+    const isRecursive = params.isRecursive;
     const lambda = ray => {
       let c = Color.BLACK;
       for (let i = 0; i < samplesPerPxl; i++) {
         const epsilon = randomPointInSphere().scale(variance);
         const epsilonOrtho = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
         const r = Ray(ray.init, ray.dir.add(epsilonOrtho).normalize());
-        c = c.add(rayTrace(r, scene, params));
+        c = c.add(isRecursive ? rayTrace(r, scene, params) : rayTraceFor(r, scene, params));
       }
       return c.scale(invSamples).toGamma(gamma);
     }
@@ -187,6 +189,7 @@ export default class Camera {
         // params
         const variance = params.variance;
         const gamma = params.gamma;
+        const isRecursive = params.isRecursive;
         // canvas 
         const w = canvas.width;
         const h = canvas.height;
@@ -210,7 +213,7 @@ export default class Camera {
           const epsilonOrtho = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
           const r = Ray(ray.init, ray.dir.add(epsilonOrtho).normalize());
           let c = Color.BLACK;
-          c = c.add(rayTrace(r, scene, params));
+          c = c.add(isRecursive ? rayTrace(r, scene, params) : rayTraceFor(r, scene, params));
           canvas.drawSquare(
             Vec2(xp * w - side, yp * h - side),
             Vec2(xp * w + side, yp * h + side),

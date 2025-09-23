@@ -284,7 +284,8 @@
             squareRender: false,
             importanceSampling: false,
             budget: 10000,
-            isBiased: true
+            isBiased: true,
+            isRecursive: true,
         };
         // gui
         const pane = new Pane({ title: "Parameters" });
@@ -295,6 +296,7 @@
         pane.addBinding(PARAMS, "importanceSampling", { label: "light samples" });
         pane.addBinding(PARAMS, "useCache", { label: "cache" });
         pane.addBinding(PARAMS, "isBiased", { label: "is biased" });
+        pane.addBinding(PARAMS, "isRecursive", { label: "is recursive" });
         const select = pane.addBinding(PARAMS, 'mode', {
             options: {
                 default: 'default',

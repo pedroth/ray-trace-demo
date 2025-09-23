@@ -3,7 +3,7 @@ import Scene from "./Scene.js"
 import Vec from "./Vector.js"
 import Color from "./Color.js"
 import Ray from "./Ray.js"
-import { rayTrace } from "./RayTrace.js";
+import { rayTrace, rayTraceFor } from "./RayTrace.js";
 import { randomPointInSphere } from "./Utils.js";
 
 function main(inputs) {
@@ -28,6 +28,7 @@ function main(inputs) {
     const gamma = params.gamma;
     const isBiased = params.isBiased;
     const invSamples = (isBiased ? bounces : 1) / samplesPerPxl
+    const isRecursive = params.isRecursive;
     // the order does matters
     for (let y = startRow; y < endRow; y++) {
         for (let x = 0; x < width; x++) {
@@ -37,7 +38,7 @@ function main(inputs) {
                 const epsilon = randomPointInSphere().scale(variance);
                 const epsilonOrtho = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
                 const r = Ray(ray.init, ray.dir.add(epsilonOrtho).normalize());
-                c = c.add(rayTrace(r, scene, params));
+                c = c.add(isRecursive ? rayTrace(r, scene, params) : rayTraceFor(r, scene, params));
             }
             const color = c.scale(invSamples).toGamma(gamma);
             image[index++] = color.red;
@@ -48,7 +49,6 @@ function main(inputs) {
     }
     return { image, startRow, endRow };
 }
-
 
 
 onmessage = message => {
