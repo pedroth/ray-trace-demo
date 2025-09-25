@@ -187,8 +187,12 @@ export default class Camera {
     return {
       to: canvas => {
         // params
+        const bounces = params.bounces;
+        const samplesPerPxl = params.samplesPerPxl;
         const variance = params.variance;
         const gamma = params.gamma;
+        const isBiased = params.isBiased;
+        const invSamples = (isBiased ? bounces : 1) / samplesPerPxl
         const isRecursive = params.isRecursive;
         // canvas 
         const w = canvas.width;
@@ -213,11 +217,13 @@ export default class Camera {
           const epsilonOrtho = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
           const r = Ray(ray.init, ray.dir.add(epsilonOrtho).normalize());
           let c = Color.BLACK;
-          c = c.add(isRecursive ? rayTrace(r, scene, params) : rayTraceFor(r, scene, params));
+          for (let j = 0; j < samplesPerPxl; j++) {
+            c = c.add(isRecursive ? rayTrace(r, scene, params) : rayTraceFor(r, scene, params));
+          }
           canvas.drawSquare(
             Vec2(xp * w - side, yp * h - side),
             Vec2(xp * w + side, yp * h + side),
-            () => c.toGamma(gamma)
+            () => c.scale(invSamples).toGamma(gamma)
           );
           // canvas.setPxl(xp * w, yp * h, c);
         }
