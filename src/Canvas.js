@@ -167,7 +167,7 @@ export default class Canvas {
   }
 
 
-  gradual(size=3, time=Number.MAX_VALUE) {
+  gradual(size = 3, time = Number.MAX_VALUE) {
     let it = 1;
     let t_0 = 0;
     const nn = size * size;
@@ -194,7 +194,7 @@ export default class Canvas {
         const y = h - 1 - i;
         const i_0 = x % size;
         const j_0 = y % size;
-        if((size * j_0 + i_0) !== t_0) continue;
+        if ((size * j_0 + i_0) !== t_0) continue;
         const color = lambda(x, y);
         if (!color) continue;
         this.image[k] = this.image[k] + (color.red - this.image[k]) / it;
@@ -212,19 +212,19 @@ export default class Canvas {
 
   onMouseDown(lambda) {
     this.canvas.addEventListener("mousedown", handleMouse(this, lambda), false);
-    this.canvas.addEventListener("touchstart", handleMouse(this, lambda), false);
+    this.canvas.addEventListener("touchstart", handleTouch(this, lambda), false);
     return this;
   }
 
   onMouseUp(lambda) {
     this.canvas.addEventListener("mouseup", handleMouse(this, lambda), false);
-    this.canvas.addEventListener("touchend", handleMouse(this, lambda), false);
+    this.canvas.addEventListener("touchend", handleTouch(this, lambda), false);
     return this;
   }
 
   onMouseMove(lambda) {
     this.canvas.addEventListener("mousemove", handleMouse(this, lambda), false);
-    this.canvas.addEventListener("touchmove", handleMouse(this, lambda), false);
+    this.canvas.addEventListener("touchmove", handleTouch(this, lambda), false);
     return this;
   }
 
@@ -354,6 +354,33 @@ function handleMouse(canvas, lambda) {
     const y = Math.floor(h - 1 - my * h);
     return lambda(x, y);
   }
+}
+
+function handleTouch(canvas, lambda) {
+  // Return the actual event handler function
+  return event => {
+    let touch;
+
+    if (event.touches && event.touches.length > 0) {
+      touch = event.touches[0];
+    } else if (event.changedTouches && event.changedTouches.length > 0) {
+      // Use the changed touch point for end or cancel events
+      // Capturing the position where the finger was lifted.
+      touch = event.changedTouches[0];
+    } else {
+      return;
+    }
+
+    const h = canvas.height;
+    const w = canvas.width;
+    const rect = canvas.canvas.getBoundingClientRect();
+    // different coordinates from canvas DOM image data
+    const mx = (touch.clientX - rect.left) / rect.width;
+    const my = (touch.clientY - rect.top) / rect.height;
+    const x = Math.floor(mx * w);
+    const y = Math.floor(h - 1 - my * h);
+    return lambda(x, y, event);
+  };
 }
 
 function parallelWorkers(tela, lambda, dependencies = [], vars = {}, memory = {}) {
