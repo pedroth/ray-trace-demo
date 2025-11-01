@@ -1,22 +1,29 @@
 import Color from "./Color.js";
 import Ray from "./Ray.js";
 import { randomPointInSphere } from "./Utils.js";
-import { Vec3 } from "./Vector.js";
 
 export function rayTraceFor(ray, scene, options) {
     const { bounces, importanceSampling, useCache } = options;
     let albedoAcc = Color.WHITE;
     let currentRay = ray;
+    let firstHit = undefined;
     for (let i = 0; i < bounces; i++) {
         const hit = scene.interceptWith(currentRay)
         if (!hit) return Color.BLACK;
 
         const [_, p, e] = hit;
+        if (i === 0) {
+            firstHit = p;
+        }
+        if (useCache) {
+            const cachedColor = cache.get(p);
+            if (cachedColor) { return cachedColor; }
+        }
         if (e.emissive) {
             const emissiveColor = e.color ?? e.colors[0];
             const attenuation = e.normalToPoint(p).dot(currentRay.dir);
             const finalColor = albedoAcc.mul(emissiveColor).scale(2 * attenuation);
-            if (useCache) { cache.set(p, finalColor); }
+            if (useCache) { cache.set(firstHit, finalColor); }
             return finalColor;
         }
         const albedo = e.color ?? e.colors[0];
@@ -26,6 +33,7 @@ export function rayTraceFor(ray, scene, options) {
         albedoAcc = albedoAcc.mul(albedo).scale(2 * attenuation);
         currentRay = scatterRay;
     }
+    // after all bounces, gather light contribution or return black
     return importanceSampling ? albedoAcc.mul(colorFromLight(currentRay.init, scene)) : Color.BLACK;
 }
 
@@ -54,37 +62,34 @@ export function rayTrace(ray, scene, options) {
     );
     const attenuation = Math.abs(e.normalToPoint(p).dot(scatterRay.dir));
     // the 2 is very important, it comes from the fact of uniform albedo
-    const finalColor = albedo.mul(scatterColor).scale(2 * attenuation);
+    let finalColor = albedo.mul(scatterColor).scale(2 * attenuation);
     if (useCache) { cache.set(p, finalColor); }
     return finalColor;
 }
 
-function colorFromLight(p, scene) {
+function colorFromLight(p0, scene, options) {
+    const { bounces, useCache } = options ?? { bounces: 5, useCache: false };
     const emissiveElements = scene.getElements().filter((e) => e.emissive);
-    let c = Color.BLACK
-    let numberOfLights = 0;
     for (let i = 0; i < emissiveElements.length; i++) {
         const light = emissiveElements[i];
-        const lightP = light.sample();
-        const v = lightP.sub(p);
-        const dir = v.normalize();
-        const hit = scene.interceptWith(Ray(p, dir));
-        if (!hit) continue;
-        if (hit) {
-            const [_, p, e] = hit;
-            const color = e.color ?? e.colors[0];
-            if (e.emissive) {
-                const n = e.normalToPoint(p);
-                const dot = dir.dot(n);
-                const attenuation = Math.abs(dot);
-                if (attenuation > 0) {
-                    c = c.add(color.scale(attenuation));
-                    numberOfLights++;
-                }
+        for (let j = 0; j < bounces; j++) {
+            const lightP0 = light.sample();
+            let ray = Ray(p0, lightP0.sub(p0).normalize());
+            const hit = scene.interceptWith(ray);
+            if (!hit) continue;
+            if (hit) {
+                const [_, p, e] = hit;
+                const color = e.color ?? e.colors[0];
+                if (e.emissive) {
+                    const n = e.normalToPoint(p);
+                    const dot = ray.dir.dot(n);
+                    const attenuation = Math.abs(dot);
+                    return color.scale(attenuation);
+                } 
             }
         }
     }
-    return c;
+    return Color.BLACK;
 }
 
 
