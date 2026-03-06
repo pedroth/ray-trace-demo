@@ -12,10 +12,11 @@ export function rayTraceFor(ray, scene, options) {
         if (!hit) return Color.BLACK;
 
         const [_, p, e] = hit;
+        const mat = e.material;
         if (i === 0) {
             firstHit = p;
         }
-        if (useCache) {
+        if (useCache && mat.type === "Diffuse") {
             const cachedColor = cache.get(p);
             if (cachedColor) { return cachedColor; }
         }
@@ -23,14 +24,13 @@ export function rayTraceFor(ray, scene, options) {
             const emissiveColor = e.color ?? e.colors[0];
             const attenuation = e.normalToPoint(p).dot(currentRay.dir);
             const finalColor = albedoAcc.mul(emissiveColor).scale(2 * attenuation);
-            if (useCache) { cache.set(firstHit, finalColor); }
+            if (useCache && mat.type === "Diffuse") { cache.set(firstHit, finalColor); }
             return finalColor;
         }
         const albedo = e.color ?? e.colors[0];
-        const mat = e.material;
         let scatterRay = mat.scatter(currentRay, p, e);
         const attenuation = Math.abs(e.normalToPoint(p).dot(scatterRay.dir));
-        albedoAcc = albedoAcc.mul(albedo).scale(2 * attenuation);
+        albedoAcc = albedoAcc.mul(albedo).scale(attenuation);
         currentRay = scatterRay;
     }
     // after all bounces, gather light contribution or return black
@@ -43,12 +43,12 @@ export function rayTrace(ray, scene, options) {
     const hit = scene.interceptWith(ray)
     if (!hit) return Color.BLACK;
     const [_, p, e] = hit;
-    if (useCache) {
+    const mat = e.material;
+    if (useCache && mat.type === "Diffuse") {
         const cachedColor = cache.get(p);
         if (cachedColor) { return cachedColor; }
     }
     const albedo = e.color ?? e.colors[0];
-    const mat = e.material;
     const isEmissive = e.emissive;
     if (isEmissive) {
         if (useCache) { cache.set(p, albedo); }
@@ -61,9 +61,9 @@ export function rayTrace(ray, scene, options) {
         { ...options, bounces: bounces - 1 }
     );
     const attenuation = Math.abs(e.normalToPoint(p).dot(scatterRay.dir));
-    // the 2 is very important, it comes from the fact of uniform albedo
-    let finalColor = albedo.mul(scatterColor).scale(2 * attenuation);
-    if (useCache) { cache.set(p, finalColor); }
+    let finalColor = albedo.mul(scatterColor).scale(attenuation);
+    // if (useCache && mat.type === "Diffuse") { cache.set(p, Color.random()); }
+    if (useCache && mat.type === "Diffuse") { cache.set(p, finalColor); }
     return finalColor;
 }
 
@@ -106,7 +106,9 @@ const lightColorCache = (gridSpace) => {
         const h = ans.hash(p);
         if (h in point2ColorMap) {
             point2Ite[h] = point2Ite[h] + 1;
-            point2ColorMap[h] = point2ColorMap[h].add(c.sub(point2ColorMap[h]).scale(1 / point2Ite[h]));
+            const ite = point2Ite[h];
+            const prevColor = point2ColorMap[h];
+            point2ColorMap[h] = prevColor.add(c.sub(prevColor).scale(1 / ite));
         } else {
             point2Ite[h] = 1;
             point2ColorMap[h] = c;
@@ -137,4 +139,4 @@ const lightColorCache = (gridSpace) => {
     }
     return ans;
 }
-const cache = lightColorCache(0.025);
+const cache = lightColorCache(0.25);
