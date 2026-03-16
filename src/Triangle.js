@@ -57,7 +57,14 @@ export default class Triangle {
     }
 
     sample() {
-        return this.tangents[0].scale(Math.random()).add(this.tangents[1].scale(Math.random())).add(this.positions[0]);
+        let u = Math.random();
+        let v = Math.random();
+        if (u + v > 1) { u = 1 - u; v = 1 - v; }
+        return this.tangents[0].scale(u).add(this.tangents[1].scale(v)).add(this.positions[0]);
+    }
+
+    area() {
+        return this.tangents[0].cross(this.tangents[1]).length() * 0.5;
     }
 
     isInside(p) {

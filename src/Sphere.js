@@ -53,6 +53,10 @@ class Sphere {
         return randomInSphere.scale(this.radius).add(this.position);
     }
 
+    area() {
+        return 4 * Math.PI * this.radius * this.radius;
+    }
+
     isInside(p) {
         return p.sub(this.position).length() < this.radius;
     }

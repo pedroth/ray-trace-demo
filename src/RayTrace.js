@@ -2,47 +2,84 @@ import Color from "./Color.js";
 import Ray from "./Ray.js";
 import { randomPointInSphere } from "./Utils.js";
 
+//========================================================================================
+// MIS helpers (Veach power heuristic)
+//========================================================================================
+const TWO_PI = 2 * Math.PI;
+const BSDF_PDF_EFF = 1; // code convention: uniform hemisphere PDF treated as 1
+
+function lightPdfEff(distSq, cosLight, area) {
+    return TWO_PI * distSq / (area * Math.max(cosLight, 1e-8));
+}
+
+function powerHeuristic(pdfA, pdfB) {
+    const a2 = pdfA * pdfA;
+    return a2 / (a2 + pdfB * pdfB);
+}
+
+//========================================================================================
+
 export function rayTraceFor(ray, scene, options) {
     const { bounces, importanceSampling, useCache } = options;
     let albedoAcc = Color.WHITE;
     let currentRay = ray;
     let firstHit = undefined;
+    let prevDiffuse = false;
+    let result = Color.BLACK;
     for (let i = 0; i < bounces; i++) {
         const hit = scene.interceptWith(currentRay)
-        if (!hit) return Color.BLACK;
+        if (!hit) return result;
 
-        const [_, p, e] = hit;
+        const [t, p, e] = hit;
         const mat = e.material;
         if (i === 0) {
             firstHit = p;
         }
         if (useCache && mat.type === "Diffuse") {
             const cachedColor = cache.get(p);
-            if (cachedColor) { return cachedColor; }
+            if (cachedColor) { return result.add(cachedColor); }
         }
         if (e.emissive) {
             const emissiveColor = e.color ?? e.colors[0];
+            // MIS weight for BSDF strategy hitting a light
+            let w = 1;
+            if (importanceSampling && prevDiffuse && e.area) {
+                const lightArea = e.area();
+                const nLight = e.normalToPoint(p);
+                const cosLight = Math.abs(currentRay.dir.dot(nLight));
+                const pLight = lightPdfEff(t * t, cosLight, lightArea);
+                w = powerHeuristic(BSDF_PDF_EFF, pLight);
+            }
             const attenuation = e.normalToPoint(p).dot(currentRay.dir);
-            const finalColor = albedoAcc.mul(emissiveColor).scale(2 * attenuation);
+            const finalColor = albedoAcc.mul(emissiveColor).scale(w * 2 * attenuation);
             if (useCache && mat.type === "Diffuse") { cache.set(firstHit, finalColor); }
-            return finalColor;
+            return result.add(finalColor);
         }
         const albedo = e.color ?? e.colors[0];
+        const n = e.normalToPoint(p);
+        const isDiffuse = mat.type === "Diffuse";
+
+        // NEE with MIS at each diffuse bounce
+        if (importanceSampling && isDiffuse) {
+            const neeColor = albedoAcc.mul(albedo).mul(colorFromLight(p, n, scene));
+            result = result.add(neeColor);
+        }
+
         let scatterRay = mat.scatter(currentRay, p, e);
-        const attenuation = Math.abs(e.normalToPoint(p).dot(scatterRay.dir));
+        const attenuation = Math.abs(n.dot(scatterRay.dir));
         albedoAcc = albedoAcc.mul(albedo).scale(attenuation);
         currentRay = scatterRay;
+        prevDiffuse = isDiffuse;
     }
-    // after all bounces, gather light contribution or return black
-    return importanceSampling ? albedoAcc.mul(colorFromLight(currentRay.init, scene)) : Color.BLACK;
+    return result;
 }
 
 export function rayTrace(ray, scene, options) {
     const { bounces, importanceSampling, useCache } = options;
-    if (bounces < 0) return importanceSampling ? colorFromLight(ray.init, scene) : Color.BLACK;
+    if (bounces < 0) return Color.BLACK;
     const hit = scene.interceptWith(ray)
     if (!hit) return Color.BLACK;
-    const [_, p, e] = hit;
+    const [t, p, e] = hit;
     const mat = e.material;
     if (useCache && mat.type === "Diffuse") {
         const cachedColor = cache.get(p);
@@ -51,45 +88,85 @@ export function rayTrace(ray, scene, options) {
     const albedo = e.color ?? e.colors[0];
     const isEmissive = e.emissive;
     if (isEmissive) {
-        if (useCache) { cache.set(p, albedo); }
-        return albedo;
+        // MIS weight for BSDF strategy hitting a light
+        let w = 1;
+        if (importanceSampling && options._prevDiffuse && e.area) {
+            const lightArea = e.area();
+            const nLight = e.normalToPoint(p);
+            const cosLight = Math.abs(ray.dir.dot(nLight));
+            const pLight = lightPdfEff(t * t, cosLight, lightArea);
+            w = powerHeuristic(BSDF_PDF_EFF, pLight);
+        }
+        const result = albedo.scale(w);
+        if (useCache) { cache.set(p, result); }
+        return result;
     }
+    const n = e.normalToPoint(p);
+    const isDiffuse = mat.type === "Diffuse";
+
+    // NEE with MIS at each diffuse bounce
+    let neeColor = Color.BLACK;
+    if (importanceSampling && isDiffuse) {
+        neeColor = albedo.mul(colorFromLight(p, n, scene));
+    }
+
+    if (bounces === 0) {
+        if (useCache && isDiffuse) { cache.set(p, neeColor); }
+        return neeColor;
+    }
+
     let scatterRay = mat.scatter(ray, p, e);
     let scatterColor = rayTrace(
         scatterRay,
         scene,
-        { ...options, bounces: bounces - 1 }
+        { ...options, bounces: bounces - 1, _prevDiffuse: isDiffuse }
     );
-    const attenuation = Math.abs(e.normalToPoint(p).dot(scatterRay.dir));
-    let finalColor = albedo.mul(scatterColor).scale(attenuation);
-    // if (useCache && mat.type === "Diffuse") { cache.set(p, Color.random()); }
-    if (useCache && mat.type === "Diffuse") { cache.set(p, finalColor); }
+    const attenuation = Math.abs(n.dot(scatterRay.dir));
+    let bsdfColor = albedo.mul(scatterColor).scale(attenuation);
+    let finalColor = neeColor.add(bsdfColor);
+    if (useCache && isDiffuse) { cache.set(p, finalColor); }
     return finalColor;
 }
 
-function colorFromLight(p0, scene, options) {
-    const { bounces, useCache } = options ?? { bounces: 5, useCache: false };
+function colorFromLight(p0, normal, scene, options) {
+    const { bounces } = options ?? { bounces: 5 };
     const emissiveElements = scene.getElements().filter((e) => e.emissive);
+    let accColor = Color.BLACK;
+    let totalSamples = 0;
     for (let i = 0; i < emissiveElements.length; i++) {
         const light = emissiveElements[i];
+        const lightArea = light.area ? light.area() : 0;
+        if (lightArea <= 0) continue;
         for (let j = 0; j < bounces; j++) {
+            totalSamples++;
             const lightP0 = light.sample();
-            let ray = Ray(p0, lightP0.sub(p0).normalize());
+            const toLight = lightP0.sub(p0);
+            const distSq = toLight.squareLength();
+            const dir = toLight.scale(1 / Math.sqrt(distSq));
+
+            const cosSurface = dir.dot(normal);
+            if (cosSurface <= 0) continue;
+
+            let ray = Ray(p0, dir);
             const hit = scene.interceptWith(ray);
             if (!hit) continue;
-            if (hit) {
-                const [_, p, e] = hit;
-                const color = e.color ?? e.colors[0];
-                if (e.emissive) {
-                    const n = e.normalToPoint(p);
-                    const dot = ray.dir.dot(n);
-                    const attenuation = Math.abs(dot);
-                    return color.scale(attenuation);
-                } 
-            }
+            const [_, p, e] = hit;
+            if (!e.emissive) continue;
+            const color = e.color ?? e.colors[0];
+            const nLight = e.normalToPoint(p);
+            const cosLight = Math.abs(dir.dot(nLight));
+
+            // MIS weight (power heuristic)
+            const pLight = lightPdfEff(distSq, cosLight, lightArea);
+            const w = powerHeuristic(pLight, BSDF_PDF_EFF);
+
+            // NEE estimator: Le * A * cos_x * cos_l / (2π * r²)
+            const contribution = w * lightArea * cosSurface * cosLight / (TWO_PI * distSq);
+            accColor = accColor.add(color.scale(contribution));
         }
     }
-    return Color.BLACK;
+    if (totalSamples === 0) return Color.BLACK;
+    return accColor.scale(1 / totalSamples);
 }
 
 
