@@ -8,13 +8,31 @@ import { randomPointInSphere } from "./Utils.js";
 const TWO_PI = 2 * Math.PI;
 const BSDF_PDF_EFF = 1; // code convention: uniform hemisphere PDF treated as 1
 
-function lightPdfEff(distSq, cosLight, area) {
-    return TWO_PI * distSq / (area * Math.max(cosLight, 1e-8));
+function lightPdfEffective(distanceSquared, cosineLight, lightArea) {
+    return TWO_PI * distanceSquared / (lightArea * Math.max(cosineLight, 1e-8));
 }
 
 function powerHeuristic(pdfA, pdfB) {
     const a2 = pdfA * pdfA;
     return a2 / (a2 + pdfB * pdfB);
+}
+
+function getAlbedo(element) {
+    return element.color ?? element.colors[0];
+}
+
+function bsdfMISWeight(ray, t, p, element, importanceSampling, prevDiffuse) {
+    if (!importanceSampling || !prevDiffuse || !element.area) return 1;
+    const lightArea = element.area();
+    const nLight = element.normalToPoint(p);
+    const cosLight = Math.abs(ray.dir.dot(nLight));
+    const pLight = lightPdfEffective(t * t, cosLight, lightArea);
+    return powerHeuristic(BSDF_PDF_EFF, pLight);
+}
+
+function computeNEE(p, n, albedoAcc, albedo, scene, importanceSampling, isDiffuse) {
+    if (!importanceSampling || !isDiffuse) return Color.BLACK;
+    return albedoAcc.mul(albedo).mul(colorFromLight(p, n, scene));
 }
 
 //========================================================================================
@@ -40,30 +58,18 @@ export function rayTraceFor(ray, scene, options) {
             if (cachedColor) { return result.add(cachedColor); }
         }
         if (e.emissive) {
-            const emissiveColor = e.color ?? e.colors[0];
-            // MIS weight for BSDF strategy hitting a light
-            let w = 1;
-            if (importanceSampling && prevDiffuse && e.area) {
-                const lightArea = e.area();
-                const nLight = e.normalToPoint(p);
-                const cosLight = Math.abs(currentRay.dir.dot(nLight));
-                const pLight = lightPdfEff(t * t, cosLight, lightArea);
-                w = powerHeuristic(BSDF_PDF_EFF, pLight);
-            }
+            const emissiveColor = getAlbedo(e);
+            const w = bsdfMISWeight(currentRay, t, p, e, importanceSampling, prevDiffuse);
             const attenuation = e.normalToPoint(p).dot(currentRay.dir);
             const finalColor = albedoAcc.mul(emissiveColor).scale(w * 2 * attenuation);
             if (useCache && mat.type === "Diffuse") { cache.set(firstHit, finalColor); }
             return result.add(finalColor);
         }
-        const albedo = e.color ?? e.colors[0];
+        const albedo = getAlbedo(e);
         const n = e.normalToPoint(p);
         const isDiffuse = mat.type === "Diffuse";
 
-        // NEE with MIS at each diffuse bounce
-        if (importanceSampling && isDiffuse) {
-            const neeColor = albedoAcc.mul(albedo).mul(colorFromLight(p, n, scene));
-            result = result.add(neeColor);
-        }
+        result = result.add(computeNEE(p, n, albedoAcc, albedo, scene, importanceSampling, isDiffuse));
 
         let scatterRay = mat.scatter(currentRay, p, e);
         const attenuation = Math.abs(n.dot(scatterRay.dir));
@@ -85,18 +91,9 @@ export function rayTrace(ray, scene, options) {
         const cachedColor = cache.get(p);
         if (cachedColor) { return cachedColor; }
     }
-    const albedo = e.color ?? e.colors[0];
-    const isEmissive = e.emissive;
-    if (isEmissive) {
-        // MIS weight for BSDF strategy hitting a light
-        let w = 1;
-        if (importanceSampling && options._prevDiffuse && e.area) {
-            const lightArea = e.area();
-            const nLight = e.normalToPoint(p);
-            const cosLight = Math.abs(ray.dir.dot(nLight));
-            const pLight = lightPdfEff(t * t, cosLight, lightArea);
-            w = powerHeuristic(BSDF_PDF_EFF, pLight);
-        }
+    const albedo = getAlbedo(e);
+    if (e.emissive) {
+        const w = bsdfMISWeight(ray, t, p, e, importanceSampling, options._prevDiffuse);
         const result = albedo.scale(w);
         if (useCache) { cache.set(p, result); }
         return result;
@@ -104,11 +101,7 @@ export function rayTrace(ray, scene, options) {
     const n = e.normalToPoint(p);
     const isDiffuse = mat.type === "Diffuse";
 
-    // NEE with MIS at each diffuse bounce
-    let neeColor = Color.BLACK;
-    if (importanceSampling && isDiffuse) {
-        neeColor = albedo.mul(colorFromLight(p, n, scene));
-    }
+    const neeColor = computeNEE(p, n, Color.WHITE, albedo, scene, importanceSampling, isDiffuse);
 
     if (bounces === 0) {
         if (useCache && isDiffuse) { cache.set(p, neeColor); }
@@ -152,12 +145,12 @@ function colorFromLight(p0, normal, scene, options) {
             if (!hit) continue;
             const [_, p, e] = hit;
             if (!e.emissive) continue;
-            const color = e.color ?? e.colors[0];
+            const color = getAlbedo(e);
             const nLight = e.normalToPoint(p);
             const cosLight = Math.abs(dir.dot(nLight));
 
             // MIS weight (power heuristic)
-            const pLight = lightPdfEff(distSq, cosLight, lightArea);
+            const pLight = lightPdfEffective(distSq, cosLight, lightArea);
             const w = powerHeuristic(pLight, BSDF_PDF_EFF);
 
             // NEE estimator: Le * A * cos_x * cos_l / (2π * r²)
@@ -216,4 +209,4 @@ const lightColorCache = (gridSpace) => {
     }
     return ans;
 }
-const cache = lightColorCache(0.25);
+const cache = lightColorCache(0.05);
