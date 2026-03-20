@@ -12,29 +12,41 @@ export function rayTraceFor(ray, scene, options) {
     let albedoAcc = Color.WHITE;
     let currentRay = ray;
     let firstHitPosition = undefined;
-    let totalResult = Color.BLACK;
+    let firstHitIsDiffuse = false;
+    let totalColor = Color.BLACK;
 
-    for (let i = 0; i < bounces; i++) {
+    for (let i = 0; i <= bounces; i++) {
         const hit = scene.interceptWith(currentRay);
-        if (!hit) return totalResult;
+        if (!hit) {
+            if (useCache && firstHitIsDiffuse) cache.set(firstHitPosition, totalColor);
+            return totalColor;
+        }
 
         const [t, p, e] = hit;
         const mat = e.material;
         const isDiffuse = mat.type === "Diffuse";
 
-        if (i === 0) firstHitPosition = p;
+        if (i === 0) {
+            firstHitPosition = p;
+            firstHitIsDiffuse = isDiffuse;
+        }
 
         // 1. Cache Lookup
         if (useCache && isDiffuse) {
             const cachedColor = cache.get(p);
-            if (cachedColor) return cachedColor;
+            if (cachedColor) {
+                const result = totalColor.add(cachedColor.mul(albedoAcc));
+                if (firstHitIsDiffuse) cache.set(firstHitPosition, result);
+                return result;
+            }
         }
 
         // 2. Hit a Light Source (Emissive)
         if (e.emissive) {
             const lightColor = e.color ?? e.colors[0];
-            if (useCache && isDiffuse) cache.set(firstHitPosition, lightColor);
-            return i === 0 ? lightColor : totalResult.add(lightColor.mul(albedoAcc));
+            const finalColor = totalColor.add(lightColor.mul(albedoAcc));
+            if (useCache && firstHitIsDiffuse) cache.set(firstHitPosition, finalColor);
+            return finalColor;
         }
 
         const albedo = e.color ?? e.colors[0];
@@ -42,8 +54,14 @@ export function rayTraceFor(ray, scene, options) {
 
         // 3. Explicit Light Sampling (Next Event Estimation)
         if (importanceSampling && isDiffuse) {
-            const directLight = albedoAcc.mul(albedo).mul(colorFromLight(p, normal, scene, { bounces: bounces }));
-            totalResult = totalResult.add(directLight);
+            const directLight = albedoAcc.mul(albedo).mul(colorFromLight(p, normal, scene, { bounces }));
+            totalColor = totalColor.add(directLight);
+        }
+
+        // Last bounce: no more scattering (matches recursive bounces=0)
+        if (i === bounces) {
+            if (useCache && firstHitIsDiffuse) cache.set(firstHitPosition, totalColor);
+            return totalColor;
         }
 
         // 4. Prepare for next bounce
@@ -54,7 +72,7 @@ export function rayTraceFor(ray, scene, options) {
         currentRay = scatterRay;
     }
 
-    return totalResult;
+    return totalColor;
 }
 
 /**
