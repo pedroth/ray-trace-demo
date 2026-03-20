@@ -3,92 +3,120 @@ import Ray from "./Ray.js";
 import { randomPointInSphere } from "./Utils.js";
 import { Vec3, Vec2 } from "./Vector.js";
 
-//========================================================================================
-// MIS helpers (Veach power heuristic)
-//========================================================================================
 const TWO_PI = 2 * Math.PI;
-const BSDF_PDF_EFF = 1; // uniform hemisphere PDF treated as 1
 
-function lightPdfEffective(distanceSquared, cosineLight, lightArea) {
-    return TWO_PI * distanceSquared / (lightArea * Math.max(cosineLight, 1e-8));
+/**
+ * Iterative version of the Ray Tracer.
+ * Better for performance and avoiding stack limits.
+ */
+export function rayTraceFor(ray, scene, options) {
+    const { bounces, importanceSampling, useCache } = options;
+    let albedoAcc = Color.WHITE;
+    let currentRay = ray;
+    let firstHitPosition = undefined;
+    let totalResult = Color.BLACK;
+
+    for (let i = 0; i < bounces; i++) {
+        const hit = scene.interceptWith(currentRay);
+        if (!hit) return totalResult;
+
+        const [t, p, e] = hit;
+        const mat = e.material;
+        const isDiffuse = mat.type === "Diffuse";
+
+        if (i === 0) firstHitPosition = p;
+
+        // 1. Cache Lookup
+        if (useCache && isDiffuse) {
+            const cachedColor = cache.get(p);
+            if (cachedColor) return cachedColor;
+        }
+
+        // 2. Hit a Light Source (Emissive)
+        if (e.emissive) {
+            const lightColor = e.color ?? e.colors[0];
+            if (useCache && isDiffuse) cache.set(firstHitPosition, lightColor);
+            return i === 0 ? lightColor : totalResult.add(lightColor.mul(albedoAcc));
+        }
+
+        const albedo = e.color ?? e.colors[0];
+        const normal = e.normalToPoint(p);
+
+        // 3. Explicit Light Sampling (Next Event Estimation)
+        if (importanceSampling && isDiffuse) {
+            const directLight = albedoAcc.mul(albedo).mul(colorFromLight(p, normal, scene, { bounces: bounces }));
+            totalResult = totalResult.add(directLight);
+        }
+
+        // 4. Prepare for next bounce
+        const scatterRay = mat.scatter(currentRay, p, e);
+        const cosTheta = Math.abs(normal.dot(scatterRay.dir));
+
+        albedoAcc = albedoAcc.mul(albedo).scale(cosTheta);
+        currentRay = scatterRay;
+    }
+
+    return totalResult;
 }
 
-function powerHeuristic(pdfA, pdfB) {
-    const a2 = pdfA * pdfA;
-    return a2 / (a2 + pdfB * pdfB);
-}
-
-function getAlbedo(element) {
-    return element.color ?? element.colors[0];
-}
-
-function bsdfMISWeight(ray, t, p, element, importanceSampling, prevDiffuse) {
-    if (!importanceSampling || !prevDiffuse || !element.area) return 1;
-    const lightArea = element.area();
-    const nLight = element.normalToPoint(p);
-    const cosLight = Math.abs(ray.dir.dot(nLight));
-    const pLight = lightPdfEffective(t * t, cosLight, lightArea);
-    return powerHeuristic(BSDF_PDF_EFF, pLight);
-}
-
-function computeNEE(p, n, albedo, scene, importanceSampling, isDiffuse) {
-    if (!importanceSampling || !isDiffuse) return Color.BLACK;
-    return albedo.mul(colorFromLight(p, n, scene));
-}
-
-//========================================================================================
-
+/**
+ * Recursive version of the Ray Tracer.
+ */
 export function rayTrace(ray, scene, options) {
     const { bounces, importanceSampling, useCache } = options;
-    if (bounces < 0) return Color.BLACK;
     const hit = scene.interceptWith(ray);
     if (!hit) return Color.BLACK;
-    const [t, p, e] = hit;
+
+    const [_, p, e] = hit;
     const mat = e.material;
-    if (useCache) {
-        const rayOut = Ray(p, ray.dir.scale(-1));
-        const cachedColor = cache.get(rayOut);
-        if (cachedColor) { return cachedColor; }
-    }
-    const albedo = getAlbedo(e);
-    if (e.emissive) {
-        const w = bsdfMISWeight(ray, t, p, e, importanceSampling, options._prevDiffuse);
-        const result = albedo.scale(w);
-        if (useCache) { cache.set(Ray(p, ray.dir.scale(-1)), result); }
-        return result;
-    }
-    const n = e.normalToPoint(p);
     const isDiffuse = mat.type === "Diffuse";
 
-    const neeColor = computeNEE(p, n, albedo, scene, importanceSampling, isDiffuse);
-
-    if (bounces === 0) {
-        if (useCache) { cache.set(Ray(p, ray.dir.scale(-1)), neeColor); }
-        return neeColor;
+    if (useCache && isDiffuse) {
+        const cachedColor = cache.get(p);
+        if (cachedColor) return cachedColor;
     }
 
-    let scatterRay = mat.scatter(ray, p, e);
-    let scatterColor = rayTrace(
-        scatterRay,
-        scene,
-        { ...options, bounces: bounces - 1, _prevDiffuse: isDiffuse }
-    );
-    const attenuation = Math.abs(n.dot(scatterRay.dir));
-    let bsdfColor = albedo.mul(scatterColor).scale(attenuation);
-    let finalColor = neeColor.add(bsdfColor);
-    if (useCache) { cache.set(scatterRay, finalColor); }
+    const albedo = e.color ?? e.colors[0];
+
+    if (e.emissive) {
+        const result = albedo;
+        if (useCache) cache.set(p, result);
+        return result;
+    }
+
+    const n = e.normalToPoint(p);
+    const directColor = (importanceSampling && isDiffuse)
+        ? albedo.mul(colorFromLight(p, n, scene, { bounces: bounces }))
+        : Color.BLACK;
+
+    if (bounces === 0) return directColor;
+
+    const scatterRay = mat.scatter(ray, p, e);
+    const scatterColor = rayTrace(scatterRay, scene, {
+        ...options,
+        bounces: bounces - 1,
+    });
+
+    const cosTheta = Math.abs(n.dot(scatterRay.dir));
+    const finalColor = directColor.add(albedo.mul(scatterColor).scale(cosTheta));
+
+    if (useCache && isDiffuse) cache.set(p, finalColor);
     return finalColor;
 }
 
+/**
+ * Samples lights directly to reduce noise.
+ */
 function colorFromLight(p0, normal, scene, options) {
     const { bounces } = options ?? { bounces: 5 };
     const emissiveElements = scene.getElements().filter((e) => e.emissive);
     let accColor = Color.BLACK;
     let totalSamples = 0;
-    for (let i = 0; i < emissiveElements.length; i++) {
-        const light = emissiveElements[i];
+
+    for (const light of emissiveElements) {
         const lightArea = light.area ? light.area() : 0;
         if (lightArea <= 0) continue;
+
         for (let j = 0; j < bounces; j++) {
             totalSamples++;
             const lightP0 = light.sample();
@@ -96,30 +124,21 @@ function colorFromLight(p0, normal, scene, options) {
             const distSq = toLight.squareLength();
             const dir = toLight.scale(1 / Math.sqrt(distSq));
 
-            const cosSurface = dir.dot(normal);
-            if (cosSurface <= 0) continue;
+            const hit = scene.interceptWith(Ray(p0, dir));
+            if (!hit || !hit[2].emissive) continue;
 
-            let ray = Ray(p0, dir);
-            const hit = scene.interceptWith(ray);
-            if (!hit) continue;
-            const [_, p, e] = hit;
-            if (!e.emissive) continue;
-            const color = getAlbedo(e);
-            const nLight = e.normalToPoint(p);
-            const cosLight = Math.abs(dir.dot(nLight));
+            const lightColor = hit[2].color ?? hit[2].colors[0];
+            const cosLight = Math.abs(dir.dot(normal));
 
-            // MIS weight (power heuristic)
-            const pLight = lightPdfEffective(distSq, cosLight, lightArea);
-            const w = powerHeuristic(pLight, BSDF_PDF_EFF);
-
-            // NEE estimator: Le * A * cos_x * cos_l / (2π * r²)
-            const contribution = w * lightArea * cosSurface * cosLight / (TWO_PI * distSq);
-            accColor = accColor.add(color.scale(contribution));
+            const geometryTerm = (lightArea * cosLight) / distSq;
+            const contribution = geometryTerm / TWO_PI;
+            accColor = accColor.add(lightColor.scale(contribution));
         }
     }
-    if (totalSamples === 0) return Color.BLACK;
-    return accColor.scale(1 / totalSamples);
+
+    return totalSamples === 0 ? Color.BLACK : accColor.scale(1 / totalSamples);
 }
+
 
 const radianceCache = (gridSpace) => {
     const point2ColorMap = {};

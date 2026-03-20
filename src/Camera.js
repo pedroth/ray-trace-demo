@@ -3,8 +3,7 @@ import { CHANNELS } from "./Constants.js";
 import MyWorker from "./Utils.js";
 import Ray from "./Ray.js";
 import { rayTraceFor } from "./RayTrace.js";
-import { rayTrace } from "./RayTrace.js";
-// import { rayTrace } from "./RayTraceII.js";
+import { rayTrace } from "./RayTraceII.js";
 import { randomPointInSphere } from "./Utils.js";
 import Vec, { Vec2, Vec3 } from "./Vector.js";
 
