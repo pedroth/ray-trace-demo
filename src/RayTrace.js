@@ -177,13 +177,15 @@ const lightColorCache = (gridSpace) => {
         point2ColorMap[h] = prevColor.add(c.sub(prevColor).scale(1 / point2Ite[h]));
     };
 
-    ans.get = (p) => {
-        if (Math.random() > 0.25) return undefined;
+    ans.get = (p, random = 0.250, threshold = 1000) => {
         const h = ans.hash(p);
+        point2Ite[h] = point2Ite[h] ?? 0;
+        if (random > 0 && Math.random() > random) return undefined;
+        if (random <= 0 && point2Ite[h] < threshold) return undefined;
         return point2ColorMap[h];
     };
 
     return ans;
 };
 
-const cache = lightColorCache(0.05);
+const cache = lightColorCache(0.1);
