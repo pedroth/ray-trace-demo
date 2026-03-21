@@ -1,142 +1,191 @@
 import Color from "./Color.js";
 import Ray from "./Ray.js";
-import { randomPointInSphere } from "./Utils.js";
 
+const TWO_PI = 2 * Math.PI;
+
+/**
+ * Iterative version of the Ray Tracer.
+ * Better for performance and avoiding stack limits.
+ */
 export function rayTraceFor(ray, scene, options) {
     const { bounces, importanceSampling, useCache } = options;
     let albedoAcc = Color.WHITE;
     let currentRay = ray;
-    let firstHit = undefined;
-    for (let i = 0; i < bounces; i++) {
-        const hit = scene.interceptWith(currentRay)
-        if (!hit) return Color.BLACK;
+    let firstHitPosition = undefined;
+    let firstHitIsDiffuse = false;
+    let totalColor = Color.BLACK;
 
-        const [_, p, e] = hit;
+    for (let i = 0; i <= bounces; i++) {
+        const hit = scene.interceptWith(currentRay);
+        if (!hit) {
+            if (useCache && firstHitIsDiffuse) cache.set(firstHitPosition, totalColor);
+            return totalColor;
+        }
+
+        const [t, p, e] = hit;
         const mat = e.material;
+        const isDiffuse = mat.type === "Diffuse";
+
         if (i === 0) {
-            firstHit = p;
+            firstHitPosition = p;
+            firstHitIsDiffuse = isDiffuse;
         }
-        if (useCache && mat.type === "Diffuse") {
+
+        // 1. Cache Lookup
+        if (useCache && isDiffuse) {
             const cachedColor = cache.get(p);
-            if (cachedColor) { return cachedColor; }
+            if (cachedColor) {
+                const result = totalColor.add(cachedColor.mul(albedoAcc));
+                if (firstHitIsDiffuse) cache.set(firstHitPosition, result);
+                return result;
+            }
         }
+
+        // 2. Hit a Light Source (Emissive)
         if (e.emissive) {
-            const emissiveColor = e.color ?? e.colors[0];
-            const attenuation = e.normalToPoint(p).dot(currentRay.dir);
-            const finalColor = albedoAcc.mul(emissiveColor).scale(2 * attenuation);
-            if (useCache && mat.type === "Diffuse") { cache.set(firstHit, finalColor); }
+            const lightColor = e.color ?? e.colors[0];
+            const finalColor = totalColor.add(lightColor.mul(albedoAcc));
+            if (useCache && firstHitIsDiffuse) cache.set(firstHitPosition, finalColor);
             return finalColor;
         }
+
         const albedo = e.color ?? e.colors[0];
-        let scatterRay = mat.scatter(currentRay, p, e);
-        const attenuation = Math.abs(e.normalToPoint(p).dot(scatterRay.dir));
-        albedoAcc = albedoAcc.mul(albedo).scale(attenuation);
+        const normal = e.normalToPoint(p);
+
+        // 3. Explicit Light Sampling (Next Event Estimation)
+        if (importanceSampling && isDiffuse) {
+            const directLight = albedoAcc.mul(albedo).mul(colorFromLight(p, normal, scene, { bounces }));
+            totalColor = totalColor.add(directLight);
+        }
+
+        // Last bounce: no more scattering (matches recursive bounces=0)
+        if (i === bounces) {
+            if (useCache && firstHitIsDiffuse) cache.set(firstHitPosition, totalColor);
+            return totalColor;
+        }
+
+        // 4. Prepare for next bounce
+        const scatterRay = mat.scatter(currentRay, p, e);
+        const cosTheta = Math.abs(normal.dot(scatterRay.dir));
+
+        albedoAcc = albedoAcc.mul(albedo).scale(cosTheta);
         currentRay = scatterRay;
     }
-    // after all bounces, gather light contribution or return black
-    return importanceSampling ? albedoAcc.mul(colorFromLight(currentRay.init, scene)) : Color.BLACK;
+
+    return totalColor;
 }
 
+/**
+ * Recursive version of the Ray Tracer.
+ */
 export function rayTrace(ray, scene, options) {
     const { bounces, importanceSampling, useCache } = options;
-    if (bounces < 0) return importanceSampling ? colorFromLight(ray.init, scene) : Color.BLACK;
-    const hit = scene.interceptWith(ray)
+    const hit = scene.interceptWith(ray);
     if (!hit) return Color.BLACK;
+
     const [_, p, e] = hit;
     const mat = e.material;
-    if (useCache && mat.type === "Diffuse") {
+    const isDiffuse = mat.type === "Diffuse";
+
+    if (useCache && isDiffuse) {
         const cachedColor = cache.get(p);
-        if (cachedColor) { return cachedColor; }
+        if (cachedColor) return cachedColor;
     }
+
     const albedo = e.color ?? e.colors[0];
-    const isEmissive = e.emissive;
-    if (isEmissive) {
-        if (useCache) { cache.set(p, albedo); }
-        return albedo;
+
+    if (e.emissive) {
+        const result = albedo;
+        if (useCache) cache.set(p, result);
+        return result;
     }
-    let scatterRay = mat.scatter(ray, p, e);
-    let scatterColor = rayTrace(
-        scatterRay,
-        scene,
-        { ...options, bounces: bounces - 1 }
-    );
-    const attenuation = Math.abs(e.normalToPoint(p).dot(scatterRay.dir));
-    let finalColor = albedo.mul(scatterColor).scale(attenuation);
-    // if (useCache && mat.type === "Diffuse") { cache.set(p, Color.random()); }
-    if (useCache && mat.type === "Diffuse") { cache.set(p, finalColor); }
+
+    const n = e.normalToPoint(p);
+    const directColor = (importanceSampling && isDiffuse)
+        ? albedo.mul(colorFromLight(p, n, scene, { bounces: bounces }))
+        : Color.BLACK;
+
+    if (bounces === 0) return directColor;
+
+    const scatterRay = mat.scatter(ray, p, e);
+    const scatterColor = rayTrace(scatterRay, scene, {
+        ...options,
+        bounces: bounces - 1,
+    });
+
+    const cosTheta = Math.abs(n.dot(scatterRay.dir));
+    const finalColor = directColor.add(albedo.mul(scatterColor).scale(cosTheta));
+
+    if (useCache && isDiffuse) cache.set(p, finalColor);
     return finalColor;
 }
 
-function colorFromLight(p0, scene, options) {
-    const { bounces, useCache } = options ?? { bounces: 5, useCache: false };
+/**
+ * Samples lights directly to reduce noise.
+ */
+function colorFromLight(p0, normal, scene, options) {
+    const { bounces } = options ?? { bounces: 5 };
     const emissiveElements = scene.getElements().filter((e) => e.emissive);
-    for (let i = 0; i < emissiveElements.length; i++) {
-        const light = emissiveElements[i];
+    let accColor = Color.BLACK;
+    let totalSamples = 0;
+
+    for (const light of emissiveElements) {
+        const lightArea = light.area ? light.area() : 0;
+        if (lightArea <= 0) continue;
+
         for (let j = 0; j < bounces; j++) {
+            totalSamples++;
             const lightP0 = light.sample();
-            let ray = Ray(p0, lightP0.sub(p0).normalize());
-            const hit = scene.interceptWith(ray);
-            if (!hit) continue;
-            if (hit) {
-                const [_, p, e] = hit;
-                const color = e.color ?? e.colors[0];
-                if (e.emissive) {
-                    const n = e.normalToPoint(p);
-                    const dot = ray.dir.dot(n);
-                    const attenuation = Math.abs(dot);
-                    return color.scale(attenuation);
-                } 
-            }
+            const toLight = lightP0.sub(p0);
+            const distSq = toLight.squareLength();
+            const dir = toLight.scale(1 / Math.sqrt(distSq));
+
+            const hit = scene.interceptWith(Ray(p0, dir));
+            if (!hit || !hit[2].emissive) continue;
+
+            const lightColor = hit[2].color ?? hit[2].colors[0];
+            const cosLight = Math.abs(dir.dot(normal));
+
+            const geometryTerm = (lightArea * cosLight) / distSq;
+            const contribution = geometryTerm / TWO_PI;
+            accColor = accColor.add(lightColor.scale(contribution));
         }
     }
-    return Color.BLACK;
+
+    return totalSamples === 0 ? Color.BLACK : accColor.scale(1 / totalSamples);
 }
 
-
+/**
+ * Simple Spatial Hash Cache
+ */
 const lightColorCache = (gridSpace) => {
     const point2ColorMap = {};
     const point2Ite = {};
     const ans = {};
+
     ans.hash = (p) => {
-        const integerCoord = p.map(z => Math.floor(z / gridSpace));
-        const h = (integerCoord.x * 92837111) ^ (integerCoord.y * 689287499) ^ (integerCoord.z * 283923481);
-        return Math.abs(h);
-    }
+        const x = Math.floor(p.x / gridSpace);
+        const y = Math.floor(p.y / gridSpace);
+        const z = Math.floor(p.z / gridSpace);
+        return Math.abs((x * 92837111) ^ (y * 689287499) ^ (z * 283923481));
+    };
+
     ans.set = (p, c) => {
         const h = ans.hash(p);
-        if (h in point2ColorMap) {
-            point2Ite[h] = point2Ite[h] + 1;
-            const ite = point2Ite[h];
-            const prevColor = point2ColorMap[h];
-            point2ColorMap[h] = prevColor.add(c.sub(prevColor).scale(1 / ite));
-        } else {
-            point2Ite[h] = 1;
-            point2ColorMap[h] = c;
-        }
-        return ans;
-    }
-    ans.get = (p) => {
-        const samples = 10;
-        const coin = Math.random() < 0.25;
-        if (!coin) return undefined;
-        let validSamples = 0;
+        point2Ite[h] = (point2Ite[h] ?? 0) + 1;
+        const prevColor = point2ColorMap[h] ?? Color.BLACK;
+        point2ColorMap[h] = prevColor.add(c.sub(prevColor).scale(1 / point2Ite[h]));
+    };
+
+    ans.get = (p, random = 0.250, threshold = 1000) => {
         const h = ans.hash(p);
-        let accColor = point2ColorMap[h];
-        if (!accColor) return undefined;
-        for (let i = 0; i < samples; i++) {
-            const epsilon = randomPointInSphere(3).scale(gridSpace);
-            const p2 = p.add(epsilon);
-            const h = ans.hash(p2);
-            if (h in point2ColorMap) {
-                accColor = accColor.add(point2ColorMap[h]);
-                validSamples++;
-            }
-        }
-        if (validSamples === 0) return undefined;
-        return accColor.scale(1 / validSamples);
-        // const h = ans.hash(p);
-        // return Math.random() < 0.5 ? point2ColorMap[h] : undefined;
-    }
+        point2Ite[h] = point2Ite[h] ?? 0;
+        if (random > 0 && Math.random() > random) return undefined;
+        if (random <= 0 && point2Ite[h] < threshold) return undefined;
+        return point2ColorMap[h];
+    };
+
     return ans;
-}
-const cache = lightColorCache(0.25);
+};
+
+const cache = lightColorCache(0.1);

@@ -27,9 +27,7 @@ export default class Triangle {
     }
 
     normalToPoint(p) {
-        const r = p.sub(this.positions[0]);
-        const dot = this.faceNormal.dot(r);
-        return dot < 1e-3 ? this.faceNormal : this.faceNormal.scale(-1);
+        return this.faceNormal;
     }
 
     interceptWith(ray) {
@@ -57,11 +55,14 @@ export default class Triangle {
     }
 
     sample() {
-        return this.tangents[0].scale(Math.random()).add(this.tangents[1].scale(Math.random())).add(this.positions[0]);
+        let u = Math.random();
+        let v = Math.random();
+        if (u + v > 1) { u = 1 - u; v = 1 - v; }
+        return this.tangents[0].scale(u).add(this.tangents[1].scale(v)).add(this.positions[0]);
     }
 
-    isInside(p) {
-        return this.faceNormal.dot(p.sub(this.positions[0])) >= 0;
+    area() {
+        return this.tangents[0].cross(this.tangents[1]).length() * 0.5;
     }
 
     serialize() {
