@@ -20,7 +20,7 @@
 <body>
 </body>
 <script type="module">
-    import Camera from "./src/Camera.js";
+    import Camera, { PARAMS as CAMERA_PARAMS } from "./src/Camera.js";
     import Canvas from "./src/Canvas.js";
     import Color from "./src/Color.js";
     import Scene from "./src/Scene.js";
@@ -274,18 +274,11 @@
 
 
         const PARAMS = localStorage.getItem("PARAMS") ?? {
-            samplesPerPxl: 1,
-            bounces: 5,
-            variance: 0.001,
-            gamma: 0.5,
-            useCache: false,
+            ...CAMERA_PARAMS,
             mode: "parallel",
             useParallel: true,
             squareRender: false,
-            importanceSampling: false,
             budget: 10000,
-            isBiased: true,
-            isRecursive: true,
         };
         // gui
         const pane = new Pane({ title: "Parameters" });

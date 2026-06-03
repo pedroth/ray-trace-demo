@@ -82,6 +82,18 @@ export default class Color {
     return Color.ofRGB(1 - this.red, 1 - this.green, 1 - this.blue);
   }
 
+    /**
+     * Clamp each color channel to [min, max]
+     */
+  clamp(min = 0, max = 1) {
+    return Color.ofRGB(
+      Math.max(min, Math.min(max, this.red)),
+      Math.max(min, Math.min(max, this.green)),
+      Math.max(min, Math.min(max, this.blue)),
+      Math.max(min, Math.min(max, this.alpha))
+    );
+  }
+
   static ofRGB(red = 0, green = 0, blue = 0, alpha = 1) {
     const rgb = [];
     rgb[0] = red;
@@ -119,4 +131,7 @@ export default class Color {
   static PURPLE = Color.ofRGB(1, 0, 1);
   static YELLOW = Color.ofRGB(1, 1, 0);
   static CYAN = Color.ofRGB(0, 1, 1);
+
+
+  static MAX_COLOR_CLAMP = 3; // to prevent color overflow
 }

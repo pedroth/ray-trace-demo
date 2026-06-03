@@ -6,11 +6,11 @@ import { rayTraceFor, rayTrace} from "./RayTrace.js";
 import { randomPointInSphere } from "./Utils.js";
 import Vec, { Vec2, Vec3 } from "./Vector.js";
 
-const PARAMS = {
+export const PARAMS = {
   samplesPerPxl: 1,
   bounces: 5,
   variance: 0.001,
-  gamma: 0.5,
+  gamma: 0.425,
   importanceSampling: true,
   useCache: false,
   isBiased: true,
@@ -175,7 +175,9 @@ export default class Camera {
         const epsilon = randomPointInSphere().scale(variance);
         const epsilonOrtho = epsilon.sub(ray.dir.scale(epsilon.dot(ray.dir)));
         const r = Ray(ray.init, ray.dir.add(epsilonOrtho).normalize());
-        c = c.add(isRecursive ? rayTrace(r, scene, params) : rayTraceFor(r, scene, params));
+        let sampleColor = isRecursive ? rayTrace(r, scene, params) : rayTraceFor(r, scene, params);
+        sampleColor = sampleColor.clamp(0, Color.MAX_COLOR_CLAMP);
+        c = c.add(sampleColor);
       }
       return c.scale(invSamples).toGamma(gamma);
     }
@@ -218,7 +220,9 @@ export default class Camera {
           const r = Ray(ray.init, ray.dir.add(epsilonOrtho).normalize());
           let c = Color.BLACK;
           for (let j = 0; j < samplesPerPxl; j++) {
-            c = c.add(isRecursive ? rayTrace(r, scene, params) : rayTraceFor(r, scene, params));
+            let sampleColor = isRecursive ? rayTrace(r, scene, params) : rayTraceFor(r, scene, params);
+            sampleColor = sampleColor.clamp(0, Color.MAX_COLOR_CLAMP);
+            c = c.add(sampleColor);
           }
           canvas.drawSquare(
             Vec2(xp * w - side, yp * h - side),

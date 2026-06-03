@@ -1,5 +1,6 @@
 import Color from "./Color.js";
 import Ray from "./Ray.js";
+import { randomPointInSphere } from "./Utils.js";
 
 const TWO_PI = 2 * Math.PI;
 
@@ -148,7 +149,7 @@ function colorFromLight(p0, normal, scene, options) {
 
             const geometryTerm = (lightArea * cosLight) / distSq;
             const contribution = geometryTerm / TWO_PI;
-            accColor = accColor.add(lightColor.scale(contribution));
+            accColor = accColor.add(lightColor.scale(contribution).clamp(0, Color.MAX_COLOR_CLAMP));
         }
     }
 
@@ -171,13 +172,14 @@ const lightColorCache = (gridSpace) => {
     };
 
     ans.set = (p, c) => {
+        c = c.clamp(0, Color.MAX_COLOR_CLAMP);
         const h = ans.hash(p);
         point2Ite[h] = (point2Ite[h] ?? 0) + 1;
         const prevColor = point2ColorMap[h] ?? Color.BLACK;
         point2ColorMap[h] = prevColor.add(c.sub(prevColor).scale(1 / point2Ite[h]));
     };
 
-    ans.get = (p, random = 0.250, threshold = 1000) => {
+    ans.get = (p, random = 0.250, threshold = 100) => {
         const h = ans.hash(p);
         point2Ite[h] = point2Ite[h] ?? 0;
         if (random > 0 && Math.random() > random) return undefined;
@@ -187,5 +189,4 @@ const lightColorCache = (gridSpace) => {
 
     return ans;
 };
-
-const cache = lightColorCache(0.1);
+const cache = lightColorCache(0.025);
