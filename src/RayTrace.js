@@ -55,7 +55,7 @@ export function rayTraceFor(ray, scene, options) {
 
         // 3. Explicit Light Sampling (Next Event Estimation)
         if (importanceSampling && isDiffuse) {
-            const directLight = albedoAcc.mul(albedo).mul(colorFromLight(p, normal, scene, { bounces }));
+            const directLight = albedoAcc.mul(albedo).mul(colorFromLight(p, normal, scene));
             totalColor = totalColor.add(directLight);
         }
 
@@ -103,7 +103,7 @@ export function rayTrace(ray, scene, options) {
 
     const n = e.normalToPoint(p);
     const directColor = (importanceSampling && isDiffuse)
-        ? albedo.mul(colorFromLight(p, n, scene, { bounces: bounces }))
+        ? albedo.mul(colorFromLight(p, n, scene))
         : Color.BLACK;
 
     if (bounces === 0) return directColor;
@@ -124,36 +124,29 @@ export function rayTrace(ray, scene, options) {
 /**
  * Samples lights directly to reduce noise.
  */
-function colorFromLight(p0, normal, scene, options) {
-    const { bounces } = options ?? { bounces: 5 };
+function colorFromLight(p0, normal, scene) {
     const emissiveElements = scene.getElements().filter((e) => e.emissive);
     let accColor = Color.BLACK;
-    let totalSamples = 0;
-
     for (const light of emissiveElements) {
         const lightArea = light.area ? light.area() : 0;
         if (lightArea <= 0) continue;
 
-        for (let j = 0; j < bounces; j++) {
-            totalSamples++;
-            const lightP0 = light.sample();
-            const toLight = lightP0.sub(p0);
-            const distSq = toLight.squareLength();
-            const dir = toLight.scale(1 / Math.sqrt(distSq));
+        const lightP0 = light.sample();
+        const toLight = lightP0.sub(p0);
+        const distSq = toLight.squareLength();
+        const dir = toLight.scale(1 / Math.sqrt(distSq));
 
-            const hit = scene.interceptWith(Ray(p0, dir));
-            if (!hit || !hit[2].emissive) continue;
+        const hit = scene.interceptWith(Ray(p0, dir));
+        if (!hit || !hit[2].emissive) continue;
 
-            const lightColor = hit[2].color ?? hit[2].colors[0];
-            const cosLight = Math.abs(dir.dot(normal));
+        const lightColor = hit[2].color ?? hit[2].colors[0];
+        const cosLight = Math.abs(dir.dot(normal));
 
-            const geometryTerm = (lightArea * cosLight) / distSq;
-            const contribution = geometryTerm / TWO_PI;
-            accColor = accColor.add(lightColor.scale(contribution).clamp(0, Color.MAX_COLOR_CLAMP));
-        }
+        const geometryTerm = (lightArea * cosLight) / distSq;
+        const contribution = geometryTerm / TWO_PI;
+        accColor = accColor.add(lightColor.scale(contribution)).clamp(0, 1);
     }
-
-    return totalSamples === 0 ? Color.BLACK : accColor.scale(1 / totalSamples);
+    return accColor;
 }
 
 /**
